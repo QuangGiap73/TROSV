@@ -1,0 +1,23 @@
+[
+  {"id":"vnu-hq","name":"Đại học Quốc gia Hà Nội","short_name":"VNU","address":"144 Xuân Thủy, Cầu Giấy, Hà Nội","district":"Cầu Giấy","latitude":21.0377,"longitude":105.7828},
+  {"id":"hnue","name":"Trường Đại học Sư phạm Hà Nội","short_name":"HNUE","address":"136 Xuân Thủy, Cầu Giấy, Hà Nội","district":"Cầu Giấy","latitude":21.0379,"longitude":105.7835},
+  {"id":"ajc","name":"Học viện Báo chí và Tuyên truyền","short_name":"AJC","address":"36 Xuân Thủy, Cầu Giấy, Hà Nội","district":"Cầu Giấy","latitude":21.0374,"longitude":105.7950},
+  {"id":"tmu","name":"Trường Đại học Thương mại","short_name":"TMU","address":"79 Hồ Tùng Mậu, Cầu Giấy, Hà Nội","district":"Cầu Giấy","latitude":21.0369,"longitude":105.7750},
+  {"id":"hust","name":"Đại học Bách khoa Hà Nội","short_name":"HUST","address":"1 Đại Cồ Việt, Hai Bà Trưng, Hà Nội","district":"Hai Bà Trưng","latitude":21.0054,"longitude":105.8432},
+  {"id":"neu","name":"Trường Đại học Kinh tế Quốc dân","short_name":"NEU","address":"207 Giải Phóng, Hai Bà Trưng, Hà Nội","district":"Hai Bà Trưng","latitude":20.9990,"longitude":105.8430},
+  {"id":"huce","name":"Trường Đại học Xây dựng Hà Nội","short_name":"HUCE","address":"55 Giải Phóng, Hai Bà Trưng, Hà Nội","district":"Hai Bà Trưng","latitude":21.0032,"longitude":105.8426},
+  {"id":"humg","name":"Trường Đại học Mỏ - Địa chất","short_name":"HUMG","address":"18 Phố Viên, Bắc Từ Liêm, Hà Nội","district":"Bắc Từ Liêm","latitude":21.0724,"longitude":105.7733},
+  {"id":"ftu","name":"Trường Đại học Ngoại thương","short_name":"FTU","address":"91 Chùa Láng, Đống Đa, Hà Nội","district":"Đống Đa","latitude":21.0232,"longitude":105.8053},
+  {"id":"dav","name":"Học viện Ngoại giao","short_name":"DAV","address":"69 Chùa Láng, Đống Đa, Hà Nội","district":"Đống Đa","latitude":21.0238,"longitude":105.8042},
+  {"id":"hvnh","name":"Học viện Ngân hàng","short_name":"BA","address":"12 Chùa Bộc, Đống Đa, Hà Nội","district":"Đống Đa","latitude":21.0084,"longitude":105.8283},
+  {"id":"hlu","name":"Trường Đại học Luật Hà Nội","short_name":"HLU","address":"87 Nguyễn Chí Thanh, Đống Đa, Hà Nội","district":"Đống Đa","latitude":21.0228,"longitude":105.8104},
+  {"id":"tlu","name":"Trường Đại học Thủy lợi","short_name":"TLU","address":"175 Tây Sơn, Đống Đa, Hà Nội","district":"Đống Đa","latitude":21.0064,"longitude":105.8242},
+  {"id":"hmu","name":"Trường Đại học Y Hà Nội","short_name":"HMU","address":"1 Tôn Thất Tùng, Đống Đa, Hà Nội","district":"Đống Đa","latitude":21.0027,"longitude":105.8329},
+  {"id":"hanu","name":"Trường Đại học Hà Nội","short_name":"HANU","address":"Km 9 Nguyễn Trãi, Nam Từ Liêm, Hà Nội","district":"Nam Từ Liêm","latitude":20.9888,"longitude":105.7950},
+  {"id":"hus","name":"Trường Đại học Khoa học Tự nhiên - ĐHQGHN","short_name":"HUS","address":"334 Nguyễn Trãi, Thanh Xuân, Hà Nội","district":"Thanh Xuân","latitude":20.9951,"longitude":105.8075},
+  {"id":"ussh","name":"Trường Đại học Khoa học Xã hội và Nhân văn - ĐHQGHN","short_name":"USSH","address":"336 Nguyễn Trãi, Thanh Xuân, Hà Nội","district":"Thanh Xuân","latitude":20.9945,"longitude":105.8068},
+  {"id":"hau","name":"Trường Đại học Kiến trúc Hà Nội","short_name":"HAU","address":"Km 10 Nguyễn Trãi, Hà Đông, Hà Nội","district":"Hà Đông","latitude":20.9803,"longitude":105.7872},
+  {"id":"phenikaa","name":"Trường Đại học Phenikaa","short_name":"Phenikaa","address":"Yên Nghĩa, Hà Đông, Hà Nội","district":"Hà Đông","latitude":20.9626,"longitude":105.7468},
+  {"id":"fpt-hoa-lac","name":"Trường Đại học FPT Hà Nội","short_name":"FPTU","address":"Khu Công nghệ cao Hòa Lạc, Thạch Thất, Hà Nội","district":"Thạch Thất","latitude":21.0133,"longitude":105.5270},
+  {"id":"haui","name":"Trường Đại học Công nghiệp Hà Nội","short_name":"HaUI","address":"298 Cầu Diễn, Bắc Từ Liêm, Hà Nội","district":"Bắc Từ Liêm","latitude":21.0549,"longitude":105.7357}
+]
