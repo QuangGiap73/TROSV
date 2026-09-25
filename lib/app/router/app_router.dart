@@ -19,6 +19,7 @@ import '../shell/app_shell.dart';
 import '../shell/landlord_shell.dart';
 import '../../features/preferences/presentation/screens/preference_screen.dart';
 import '../../features/rooms/presentation/screens/room_match_screen.dart';
+import '../../features/rooms/presentation/screens/roommate_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -35,6 +36,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(path: '/search', builder: (_, _) => const SearchScreen()),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/roommate',
+                builder: (_, _) => const RoommateScreen(),
+              ),
             ],
           ),
           StatefulShellBranch(

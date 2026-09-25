@@ -3,9 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:trosv_app/app/app.dart';
 import 'package:trosv_app/features/auth/domain/entities/auth_session.dart';
 import 'package:trosv_app/features/auth/presentation/providers/auth_provider.dart';
-import 'package:trosv_app/features/rooms/presentation/providers/room_providers.dart';
 import 'package:trosv_app/features/favorites/presentation/providers/favorites_provider.dart';
 import 'package:trosv_app/features/rooms/domain/entities/room_summary.dart';
+import 'package:trosv_app/features/rooms/presentation/providers/room_providers.dart';
 
 void main() {
   testWidgets('hiển thị trang chủ TrọSV', (tester) async {
@@ -21,9 +21,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('TrọSV'), findsOneWidget);
-    expect(find.text('Tìm một nơi ở thật phù hợp'), findsOneWidget);
-    expect(find.text('Tìm phòng'), findsOneWidget);
+    expect(find.text('Xin chào bạn 👋'), findsOneWidget);
+    expect(find.text('Bạn muốn tìm phòng ở đâu?'), findsOneWidget);
+    expect(find.text('Hà Nội'), findsOneWidget);
   });
 }
 
