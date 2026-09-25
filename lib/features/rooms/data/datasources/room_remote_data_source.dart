@@ -2,15 +2,20 @@ import 'package:dio/dio.dart';
 
 import '../../domain/entities/room_detail.dart';
 import '../../domain/entities/room_summary.dart';
+import '../../domain/entities/room_search_query.dart';
 
 class RoomRemoteDataSource {
   const RoomRemoteDataSource(this._dio);
   final Dio _dio;
 
   Future<List<RoomSummary>> getRooms({required int limit}) async {
+    return searchRooms(RoomSearchQuery(limit: limit));
+  }
+
+  Future<List<RoomSummary>> searchRooms(RoomSearchQuery query) async {
     final response = await _dio.get<Map<String, dynamic>>(
       '/api/v1/rooms',
-      queryParameters: {'page': 1, 'limit': limit},
+      queryParameters: query.toQueryParameters(),
     );
     final envelope = response.data;
     final data = envelope?['data'];

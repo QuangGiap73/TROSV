@@ -1,5 +1,6 @@
 import '../../domain/entities/room_detail.dart';
 import '../../domain/entities/room_summary.dart';
+import '../../domain/entities/room_search_query.dart';
 import '../../domain/repositories/room_repository.dart';
 import '../datasources/room_remote_data_source.dart';
 
@@ -10,6 +11,10 @@ class RoomRepositoryImpl implements RoomRepository {
   @override
   Future<List<RoomSummary>> getFeaturedRooms({int limit = 5}) =>
       _remoteDataSource.getRooms(limit: limit);
+
+  @override
+  Future<List<RoomSummary>> searchRooms(RoomSearchQuery query) =>
+      _remoteDataSource.searchRooms(query);
 
   @override
   Future<RoomDetail> getRoomDetail(String roomId) =>

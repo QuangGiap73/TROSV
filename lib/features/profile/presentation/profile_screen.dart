@@ -102,6 +102,13 @@ class ProfileScreen extends ConsumerWidget {
                     onTap: () =>
                         _comingSoon(context, 'Quản lý thiết bị đăng nhập'),
                   ),
+                  _MenuItem(
+                    icon: Icons.location_on_outlined,
+                    iconColor: const Color(0xFF008E79),
+                    title: 'Quyền vị trí',
+                    subtitle: 'Bật hoặc tắt quyền GPS của TrọSV',
+                    onTap: () => context.push('/profile/location-settings'),
+                  ),
                   if (user.availableLandlordMode != null)
                     _MenuItem(
                       icon: Icons.apartment_rounded,

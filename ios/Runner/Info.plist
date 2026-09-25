@@ -49,5 +49,7 @@
 	<string>TrọSV cần quyền truy cập thư viện để bạn chọn ảnh đại diện.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>TrọSV cần quyền máy ảnh để bạn chụp ảnh đại diện.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>TrọSV sử dụng vị trí để hiển thị và tìm các phòng trọ ở gần bạn.</string>
 </dict>
 </plist>

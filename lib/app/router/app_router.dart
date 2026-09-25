@@ -13,6 +13,7 @@ import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/profile/presentation/personal_info_screen.dart';
 import '../../features/profile/presentation/edit_profile_screen.dart';
 import '../../features/profile/presentation/change_password_screen.dart';
+import '../../features/profile/presentation/location_settings_screen.dart';
 import '../../features/rooms/presentation/screens/room_detail_screen.dart';
 import '../../features/search/presentation/search_screen.dart';
 import '../shell/app_shell.dart';
@@ -20,6 +21,7 @@ import '../shell/landlord_shell.dart';
 import '../../features/preferences/presentation/screens/preference_screen.dart';
 import '../../features/rooms/presentation/screens/room_match_screen.dart';
 import '../../features/rooms/presentation/screens/roommate_screen.dart';
+import '../../features/rooms/presentation/screens/room_map_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -106,6 +108,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/rooms/matches',
         builder: (_, _) => const RoomMatchScreen(),
       ),
+      GoRoute(path: '/rooms/map', builder: (_, _) => const RoomMapScreen()),
       GoRoute(
         path: '/rooms/:roomId',
         builder: (_, state) {
@@ -132,6 +135,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/profile/change-password',
         builder: (_, _) => const ChangePasswordScreen(),
+      ),
+      GoRoute(
+        path: '/profile/location-settings',
+        builder: (_, _) => const LocationSettingsScreen(),
       ),
     ],
   );

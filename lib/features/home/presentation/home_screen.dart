@@ -50,7 +50,7 @@ class HomeScreen extends ConsumerWidget {
                 onSearchTap: () => context.go('/search'),
                 onFindRoomTap: () => context.go('/search'),
                 onRoommateTap: () => context.go('/roommate'),
-                onMapTap: () => _comingSoon(context, 'Bản đồ phòng trọ'),
+                onMapTap: () => context.push('/rooms/map'),
                 onNewRoomTap: () => context.go('/search'),
               ),
             ),
