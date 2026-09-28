@@ -12,4 +12,19 @@ class GeocodedAddress {
   final String ward;
 }
 
-typedef LocationCoordinates = ({double latitude, double longitude});
+class GeocodedLocation {
+  const GeocodedLocation({
+    required this.latitude,
+    required this.longitude,
+    required this.address,
+  });
+
+  final double latitude;
+  final double longitude;
+  final GeocodedAddress address;
+}
+
+typedef LocationCoordinates = ({
+  double latitude,
+  double longitude,
+});

@@ -19,7 +19,6 @@ final goongDioProvider = Provider<Dio>((ref) {
   );
 
   ref.onDispose(dio.close);
-
   return dio;
 });
 
@@ -42,23 +41,43 @@ final reverseGeocodeProvider = FutureProvider.autoDispose.family<
 
     debugPrint(
       'REVERSE GEOCODE: '
-      '${coordinates.latitude}, '
-      '${coordinates.longitude}',
+      '${coordinates.latitude}, ${coordinates.longitude}',
     );
 
-    final dataSource = ref.read(
-      goongLocationDataSourceProvider,
-    );
+    return ref
+        .read(goongLocationDataSourceProvider)
+        .reverseGeocode(
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
+        );
+  },
+);
 
-    final result = await dataSource.reverseGeocode(
-      latitude: coordinates.latitude,
-      longitude: coordinates.longitude,
-    );
+final forwardGeocodeProvider =
+    FutureProvider.autoDispose.family<GeocodedLocation, String>(
+  (ref, rawAddress) async {
+    if (!GoongConfig.hasApiKey) {
+      throw StateError(
+        'Chưa cấu hình GOONG_API_KEY.',
+      );
+    }
+
+    final address = rawAddress.trim();
+
+    if (address.length < 5) {
+      throw const FormatException(
+        'Địa chỉ quá ngắn.',
+      );
+    }
 
     debugPrint(
-      'ADDRESS RESULT: ${result.formattedAddress}',
+      'FORWARD GEOCODE: $address',
     );
 
-    return result;
+    return ref
+        .read(goongLocationDataSourceProvider)
+        .forwardGeocode(
+          address: address,
+        );
   },
 );
