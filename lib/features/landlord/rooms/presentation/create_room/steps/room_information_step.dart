@@ -9,6 +9,7 @@ class RoomInformationStep extends StatefulWidget {
     required this.onBack,
     required this.onNext,
     required this.onChangeProperty,
+    required this.isSaving,
     super.key,
   });
 
@@ -16,6 +17,7 @@ class RoomInformationStep extends StatefulWidget {
   final VoidCallback onBack;
   final VoidCallback onNext;
   final VoidCallback onChangeProperty;
+  final bool isSaving;
 
   @override
   State<RoomInformationStep> createState() => _RoomInformationStepState();
@@ -39,6 +41,7 @@ class _RoomInformationStepState extends State<RoomInformationStep> {
       title: '',
       onBack: widget.onBack,
       onNext: _validateAndContinue,
+      isLoading: widget.isSaving,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

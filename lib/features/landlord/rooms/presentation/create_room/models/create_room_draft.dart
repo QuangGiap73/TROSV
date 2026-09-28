@@ -7,15 +7,23 @@ class RoomSpaceDraft {
   RoomSpaceDraft({
     required this.type,
     required this.title,
+    this.privacyType = 'PRIVATE',
     this.description = '',
   });
 
   final String type;
   final String title;
+  String privacyType;
   String description;
 }
 
 class CreateRoomDraft extends ChangeNotifier {
+  String? roomId;
+  String? roomPropertyId;
+  Map<String, dynamic>? backendPreview;
+  final Set<String> confirmedMediaPaths = {};
+  final Set<String> syncedSpaceKeys = {};
+
   // Bước 1: khu trọ
   String? propertyId;
   String propertyName = '';
@@ -154,6 +162,9 @@ class CreateRoomDraft extends ChangeNotifier {
       priceMonthly! > 0;
 
   bool get hasMedia => images.isNotEmpty;
+
+  String spaceKey(RoomSpaceDraft space) =>
+      '${space.type}|${space.privacyType}|${space.description.trim()}';
 
   @override
   void dispose() {

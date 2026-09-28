@@ -20,6 +20,7 @@ class RoomCostStep extends StatefulWidget {
     required this.onRetryAmenities,
     required this.onBack,
     required this.onNext,
+    required this.isSaving,
     super.key,
   });
 
@@ -29,6 +30,7 @@ class RoomCostStep extends StatefulWidget {
   final VoidCallback onRetryAmenities;
   final VoidCallback onBack;
   final VoidCallback onNext;
+  final bool isSaving;
 
   @override
   State<RoomCostStep> createState() => _RoomCostStepState();
@@ -73,6 +75,7 @@ class _RoomCostStepState extends State<RoomCostStep> {
       title: '',
       onBack: widget.onBack,
       onNext: widget.onNext,
+      isLoading: widget.isSaving,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -279,10 +282,7 @@ class _SectionCard extends StatelessWidget {
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 11,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
             decoration: BoxDecoration(
               color: const Color(0xFFF0FAF7),
               borderRadius: BorderRadius.circular(13),
@@ -297,11 +297,7 @@ class _SectionCard extends StatelessWidget {
                     color: Color(0xFFD7F6EE),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
-                    icon,
-                    color: _greenDark,
-                    size: 24,
-                  ),
+                  child: Icon(icon, color: _greenDark, size: 24),
                 ),
                 const SizedBox(width: 11),
                 Expanded(
@@ -379,10 +375,7 @@ class _UtilityCostRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _CostLabel(
-                  icon: icon,
-                  label: label,
-                ),
+                _CostLabel(icon: icon, label: label),
                 const SizedBox(height: 7),
                 Row(
                   children: [
@@ -430,10 +423,7 @@ class _UtilityCostRow extends StatelessWidget {
             children: [
               SizedBox(
                 width: 112,
-                child: _CostLabel(
-                  icon: icon,
-                  label: label,
-                ),
+                child: _CostLabel(icon: icon, label: label),
               ),
               Expanded(
                 flex: 6,
@@ -458,8 +448,8 @@ class _UtilityCostRow extends StatelessWidget {
                 _priceEnabled
                     ? unit
                     : type == 'FREE'
-                        ? 'Miễn phí'
-                        : 'Đã gồm',
+                    ? 'Miễn phí'
+                    : 'Đã gồm',
               ),
             ],
           ),
@@ -485,10 +475,7 @@ class _TypeDropdown extends StatelessWidget {
     return DropdownButtonFormField<String>(
       initialValue: value,
       isExpanded: true,
-      icon: const Icon(
-        Icons.keyboard_arrow_down_rounded,
-        size: 20,
-      ),
+      icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
       decoration: _compactDecoration(),
       items: items.entries
           .map(
@@ -538,17 +525,11 @@ class _SimpleCostRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: _CostLabel(
-              icon: icon,
-              label: label,
-            ),
+            child: _CostLabel(icon: icon, label: label),
           ),
           SizedBox(
             width: 104,
-            child: _MoneyField(
-              value: value,
-              onChanged: onChanged,
-            ),
+            child: _MoneyField(value: value, onChanged: onChanged),
           ),
           const SizedBox(width: 6),
           const _UnitPill('VNĐ/tháng'),
@@ -559,10 +540,7 @@ class _SimpleCostRow extends StatelessWidget {
 }
 
 class _CostLabel extends StatelessWidget {
-  const _CostLabel({
-    required this.icon,
-    required this.label,
-  });
+  const _CostLabel({required this.icon, required this.label});
 
   final IconData icon;
   final String label;
@@ -571,14 +549,7 @@ class _CostLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        SizedBox(
-          width: 32,
-          child: Icon(
-            icon,
-            color: _green,
-            size: 23,
-          ),
-        ),
+        SizedBox(width: 32, child: Icon(icon, color: _green, size: 23)),
         const SizedBox(width: 5),
         Expanded(
           child: Text(
@@ -622,9 +593,7 @@ class _MoneyFieldState extends State<_MoneyField> {
   void initState() {
     super.initState();
 
-    _controller = TextEditingController(
-      text: _displayMoney(widget.value),
-    );
+    _controller = TextEditingController(text: _displayMoney(widget.value));
   }
 
   @override
@@ -637,9 +606,7 @@ class _MoneyFieldState extends State<_MoneyField> {
       if (_controller.text != nextText) {
         _controller.value = TextEditingValue(
           text: nextText,
-          selection: TextSelection.collapsed(
-            offset: nextText.length,
-          ),
+          selection: TextSelection.collapsed(offset: nextText.length),
         );
       }
     }
@@ -663,18 +630,11 @@ class _MoneyFieldState extends State<_MoneyField> {
         fontWeight: FontWeight.w600,
         color: _textPrimary,
       ),
-      inputFormatters: [
-        _MoneyInputFormatter(),
-      ],
+      inputFormatters: [_MoneyInputFormatter()],
       onChanged: (text) {
-        widget.onChanged(
-          int.tryParse(_digits(text)) ?? 0,
-        );
+        widget.onChanged(int.tryParse(_digits(text)) ?? 0);
       },
-      decoration: _compactDecoration(
-        hint: '0',
-        disabled: !widget.enabled,
-      ),
+      decoration: _compactDecoration(hint: '0', disabled: !widget.enabled),
     );
   }
 }
@@ -688,12 +648,8 @@ class _UnitPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 44,
-      constraints: const BoxConstraints(
-        minWidth: 74,
-      ),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 7,
-      ),
+      constraints: const BoxConstraints(minWidth: 74),
+      padding: const EdgeInsets.symmetric(horizontal: 7),
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: const Color(0xFFF1F4F5),
@@ -717,32 +673,20 @@ class _UnitPill extends StatelessWidget {
 // =============================================================
 
 class _TotalCost extends StatelessWidget {
-  const _TotalCost({
-    required this.total,
-  });
+  const _TotalCost({required this.total});
 
   final int total;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(
-        14,
-        13,
-        14,
-        13,
-      ),
+      padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [
-            Color(0xFFE7F9F4),
-            Color(0xFFF0FCF9),
-          ],
+          colors: [Color(0xFFE7F9F4), Color(0xFFF0FCF9)],
         ),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: const Color(0xFFD1F0E7),
-        ),
+        border: Border.all(color: const Color(0xFFD1F0E7)),
       ),
       child: Row(
         children: [
@@ -797,10 +741,7 @@ class _TotalCost extends StatelessWidget {
                 const SizedBox(height: 1),
                 const Text(
                   '(chưa gồm điện, nước theo mức sử dụng)',
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    color: _textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 10.5, color: _textSecondary),
                 ),
               ],
             ),
@@ -834,14 +775,9 @@ class _AmenityGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     if (loading) {
       return const Padding(
-        padding: EdgeInsets.symmetric(
-          vertical: 24,
-        ),
+        padding: EdgeInsets.symmetric(vertical: 24),
         child: Center(
-          child: CircularProgressIndicator(
-            strokeWidth: 2.5,
-            color: _green,
-          ),
+          child: CircularProgressIndicator(strokeWidth: 2.5, color: _green),
         ),
       );
     }
@@ -851,17 +787,14 @@ class _AmenityGrid extends StatelessWidget {
         child: OutlinedButton.icon(
           onPressed: onRetry,
           icon: const Icon(Icons.refresh),
-          label: const Text(
-            'Tải lại tiện ích',
-          ),
+          label: const Text('Tải lại tiện ích'),
         ),
       );
     }
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final crossAxisCount =
-            constraints.maxWidth >= 340 ? 4 : 3;
+        final crossAxisCount = constraints.maxWidth >= 340 ? 4 : 3;
 
         return GridView.builder(
           shrinkWrap: true,
@@ -875,16 +808,12 @@ class _AmenityGrid extends StatelessWidget {
           ),
           itemBuilder: (_, index) {
             final amenity = amenities[index];
-            final selected = selectedCodes.contains(
-              amenity.code,
-            );
+            final selected = selectedCodes.contains(amenity.code);
 
             return _AmenityTile(
               amenity: amenity,
               selected: selected,
-              onTap: () => onToggle(
-                amenity.code,
-              ),
+              onTap: () => onToggle(amenity.code),
             );
           },
         );
@@ -907,9 +836,7 @@ class _AmenityTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected
-          ? const Color(0xFFE7F9F4)
-          : Colors.white,
+      color: selected ? const Color(0xFFE7F9F4) : Colors.white,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
@@ -918,18 +845,11 @@ class _AmenityTile extends StatelessWidget {
           children: [
             Positioned.fill(
               child: Container(
-                padding: const EdgeInsets.fromLTRB(
-                  5,
-                  10,
-                  5,
-                  6,
-                ),
+                padding: const EdgeInsets.fromLTRB(5, 10, 5, 6),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: selected
-                        ? _green
-                        : const Color(0xFFDDE5E2),
+                    color: selected ? _green : const Color(0xFFDDE5E2),
                     width: selected ? 1.4 : 1,
                   ),
                 ),
@@ -937,13 +857,8 @@ class _AmenityTile extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      _amenityIcon(
-                        amenity.code,
-                        amenity.name,
-                      ),
-                      color: selected
-                          ? _greenDark
-                          : const Color(0xFF263833),
+                      _amenityIcon(amenity.code, amenity.name),
+                      color: selected ? _greenDark : const Color(0xFF263833),
                       size: 26,
                     ),
                     const SizedBox(height: 6),
@@ -996,9 +911,7 @@ class _TipBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFEAF7FA),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: const Color(0xFFD5EEF5),
-        ),
+        border: Border.all(color: const Color(0xFFD5EEF5)),
       ),
       child: const Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1006,11 +919,7 @@ class _TipBox extends StatelessWidget {
           CircleAvatar(
             radius: 20,
             backgroundColor: Color(0xFFBCE8F5),
-            child: Icon(
-              Icons.info_rounded,
-              color: Color(0xFF159BD3),
-              size: 21,
-            ),
+            child: Icon(Icons.info_rounded, color: Color(0xFF159BD3), size: 21),
           ),
           SizedBox(width: 11),
           Expanded(
@@ -1047,45 +956,28 @@ class _TipBox extends StatelessWidget {
 // DECORATIONS / HELPERS
 // =============================================================
 
-InputDecoration _compactDecoration({
-  String? hint,
-  bool disabled = false,
-}) {
+InputDecoration _compactDecoration({String? hint, bool disabled = false}) {
   return InputDecoration(
     hintText: hint,
     isDense: true,
     filled: true,
-    fillColor: disabled
-        ? const Color(0xFFF0F2F2)
-        : _fieldFill,
-    contentPadding: const EdgeInsets.symmetric(
-      horizontal: 10,
-      vertical: 13,
-    ),
+    fillColor: disabled ? const Color(0xFFF0F2F2) : _fieldFill,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 13),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(10),
-      borderSide: const BorderSide(
-        color: Color(0xFFDDE5E2),
-      ),
+      borderSide: const BorderSide(color: Color(0xFFDDE5E2)),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(10),
-      borderSide: const BorderSide(
-        color: Color(0xFFDDE5E2),
-      ),
+      borderSide: const BorderSide(color: Color(0xFFDDE5E2)),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(10),
-      borderSide: const BorderSide(
-        color: _green,
-        width: 1.4,
-      ),
+      borderSide: const BorderSide(color: _green, width: 1.4),
     ),
     disabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(10),
-      borderSide: const BorderSide(
-        color: Color(0xFFE1E6E5),
-      ),
+      borderSide: const BorderSide(color: Color(0xFFE1E6E5)),
     ),
   );
 }
@@ -1100,82 +992,61 @@ InputDecoration _descriptionDecoration({
     alignLabelWithHint: true,
     prefixIcon: const Padding(
       padding: EdgeInsets.only(bottom: 34),
-      child: Icon(
-        Icons.chat_rounded,
-        color: _green,
-      ),
+      child: Icon(Icons.chat_rounded, color: _green),
     ),
     filled: true,
     fillColor: _fieldFill,
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(11),
-      borderSide: const BorderSide(
-        color: Color(0xFFDDE5E2),
-      ),
+      borderSide: const BorderSide(color: Color(0xFFDDE5E2)),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(11),
-      borderSide: const BorderSide(
-        color: Color(0xFFDDE5E2),
-      ),
+      borderSide: const BorderSide(color: Color(0xFFDDE5E2)),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(11),
-      borderSide: const BorderSide(
-        color: _green,
-        width: 1.4,
-      ),
+      borderSide: const BorderSide(color: _green, width: 1.4),
     ),
   );
 }
 
-IconData _amenityIcon(
-  String code,
-  String name,
-) {
+IconData _amenityIcon(String code, String name) {
   final value = '$code $name'.toUpperCase();
 
   if (value.contains('WIFI')) {
     return Icons.wifi_rounded;
   }
 
-  if (value.contains('AIR') ||
-      value.contains('ĐIỀU HÒA')) {
+  if (value.contains('AIR') || value.contains('ĐIỀU HÒA')) {
     return Icons.ac_unit_rounded;
   }
 
-  if (value.contains('WASH') ||
-      value.contains('MÁY GIẶT')) {
+  if (value.contains('WASH') || value.contains('MÁY GIẶT')) {
     return Icons.local_laundry_service_rounded;
   }
 
-  if (value.contains('FRIDGE') ||
-      value.contains('TỦ LẠNH')) {
+  if (value.contains('FRIDGE') || value.contains('TỦ LẠNH')) {
     return Icons.kitchen_rounded;
   }
 
-  if (value.contains('WATER_HEATER') ||
-      value.contains('NÓNG LẠNH')) {
+  if (value.contains('WATER_HEATER') || value.contains('NÓNG LẠNH')) {
     return Icons.hot_tub_rounded;
   }
 
-  if (value.contains('FINGER') ||
-      value.contains('VÂN TAY')) {
+  if (value.contains('FINGER') || value.contains('VÂN TAY')) {
     return Icons.fingerprint_rounded;
   }
 
-  if (value.contains('ELEVATOR') ||
-      value.contains('THANG MÁY')) {
+  if (value.contains('ELEVATOR') || value.contains('THANG MÁY')) {
     return Icons.elevator_rounded;
   }
 
-  if (value.contains('BALCONY') ||
-      value.contains('BAN CÔNG')) {
+  if (value.contains('BALCONY') || value.contains('BAN CÔNG')) {
     return Icons.balcony_rounded;
   }
 
-  if (value.contains('PARK') ||
-      value.contains('ĐỂ XE')) {
+  if (value.contains('PARK') || value.contains('ĐỂ XE')) {
     return Icons.two_wheeler_rounded;
   }
 
@@ -1183,18 +1054,15 @@ IconData _amenityIcon(
     return Icons.photo_camera_outlined;
   }
 
-  if (value.contains('WARDROBE') ||
-      value.contains('TỦ QUẦN')) {
+  if (value.contains('WARDROBE') || value.contains('TỦ QUẦN')) {
     return Icons.door_sliding_outlined;
   }
 
-  if (value.contains('BED') ||
-      value.contains('GIƯỜNG')) {
+  if (value.contains('BED') || value.contains('GIƯỜNG')) {
     return Icons.bed_rounded;
   }
 
-  if (value.contains('KITCHEN') ||
-      value.contains('BẾP')) {
+  if (value.contains('KITCHEN') || value.contains('BẾP')) {
     return Icons.soup_kitchen_rounded;
   }
 
@@ -1207,30 +1075,19 @@ class _MoneyInputFormatter extends TextInputFormatter {
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
-    final digits = _digits(
-      newValue.text,
-    );
+    final digits = _digits(newValue.text);
 
-    final formatted = digits.isEmpty
-        ? ''
-        : _formatMoney(
-            int.parse(digits),
-          );
+    final formatted = digits.isEmpty ? '' : _formatMoney(int.parse(digits));
 
     return TextEditingValue(
       text: formatted,
-      selection: TextSelection.collapsed(
-        offset: formatted.length,
-      ),
+      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }
 
 String _digits(String value) {
-  return value.replaceAll(
-    RegExp(r'[^0-9]'),
-    '',
-  );
+  return value.replaceAll(RegExp(r'[^0-9]'), '');
 }
 
 String _displayMoney(int value) {
@@ -1246,14 +1103,11 @@ String _formatMoney(int value) {
   final output = StringBuffer();
 
   for (var index = 0; index < digits.length; index++) {
-    if (index > 0 &&
-        (digits.length - index) % 3 == 0) {
+    if (index > 0 && (digits.length - index) % 3 == 0) {
       output.write('.');
     }
 
-    output.write(
-      digits[index],
-    );
+    output.write(digits[index]);
   }
 
   return output.toString();

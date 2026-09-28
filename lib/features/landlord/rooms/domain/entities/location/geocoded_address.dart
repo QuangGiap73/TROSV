@@ -38,7 +38,4 @@ class GoongPlacePrediction {
   final String secondaryText;
 }
 
-typedef LocationCoordinates = ({
-  double latitude,
-  double longitude,
-});
+typedef LocationCoordinates = ({double latitude, double longitude});

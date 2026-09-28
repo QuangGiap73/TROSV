@@ -11,12 +11,13 @@ class RoomMediaStep extends StatefulWidget {
     required this.draft,
     required this.onBack,
     required this.onNext,
+    required this.isSaving,
     super.key,
   });
 
   final CreateRoomDraft draft;
-  final VoidCallback onBack;
-  final VoidCallback onNext;
+  final VoidCallback onBack, onNext;
+  final bool isSaving;
 
   @override
   State<RoomMediaStep> createState() => _RoomMediaStepState();
@@ -24,14 +25,11 @@ class RoomMediaStep extends StatefulWidget {
 
 class _RoomMediaStepState extends State<RoomMediaStep> {
   final _picker = ImagePicker();
+  CreateRoomDraft get draft => widget.draft;
 
   Future<void> _pickImages() async {
     final files = await _picker.pickMultiImage(imageQuality: 85, limit: 10);
-
-    if (files.isNotEmpty) {
-      widget.draft.addImages(files);
-      setState(() {});
-    }
+    if (files.isNotEmpty) setState(() => draft.addImages(files));
   }
 
   Future<void> _pickVideo() async {
@@ -39,21 +37,16 @@ class _RoomMediaStepState extends State<RoomMediaStep> {
       source: ImageSource.gallery,
       maxDuration: const Duration(minutes: 2),
     );
-
-    if (file != null) {
-      widget.draft.addVideo(file);
-      setState(() {});
-    }
+    if (file != null) setState(() => draft.addVideo(file));
   }
 
   @override
   Widget build(BuildContext context) {
-    final draft = widget.draft;
-
     return CreateRoomStepLayout(
       step: 3,
-      title: 'Hình ảnh & video',
+      title: 'Hình ảnh, video & không gian',
       onBack: widget.onBack,
+      isLoading: widget.isSaving,
       onNext: () {
         if (!draft.hasMedia) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -67,7 +60,7 @@ class _RoomMediaStepState extends State<RoomMediaStep> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Hình ảnh rõ nét, chân thực để thu hút người thuê.',
+            'Ảnh sẽ được upload trực tiếp lên storage và xác nhận với phòng nháp.',
             style: TextStyle(color: Colors.grey),
           ),
           const SizedBox(height: 14),
@@ -82,54 +75,50 @@ class _RoomMediaStepState extends State<RoomMediaStep> {
                 crossAxisSpacing: 9,
                 childAspectRatio: 1.4,
               ),
-              itemBuilder: (_, index) {
-                return Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.file(
-                        File(draft.images[index].path),
-                        fit: BoxFit.cover,
+              itemBuilder: (_, index) => Stack(
+                fit: StackFit.expand,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.file(
+                      File(draft.images[index].path),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  Positioned(
+                    right: 5,
+                    top: 5,
+                    child: CircleAvatar(
+                      radius: 14,
+                      backgroundColor: Colors.black54,
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        iconSize: 15,
+                        color: Colors.white,
+                        onPressed: () =>
+                            setState(() => draft.removeImage(index)),
+                        icon: const Icon(Icons.close),
                       ),
                     ),
-                    Positioned(
-                      right: 5,
-                      top: 5,
-                      child: CircleAvatar(
-                        radius: 14,
-                        backgroundColor: Colors.black54,
-                        child: IconButton(
-                          padding: EdgeInsets.zero,
-                          iconSize: 15,
-                          color: Colors.white,
-                          onPressed: () {
-                            draft.removeImage(index);
-                            setState(() {});
-                          },
-                          icon: const Icon(Icons.close),
-                        ),
+                  ),
+                  if (index == 0)
+                    const Positioned(
+                      left: 7,
+                      bottom: 7,
+                      child: Chip(
+                        label: Text('Ảnh đại diện'),
+                        visualDensity: VisualDensity.compact,
                       ),
                     ),
-                    if (index == 0)
-                      const Positioned(
-                        left: 7,
-                        bottom: 7,
-                        child: Chip(
-                          label: Text('Ảnh đại diện'),
-                          visualDensity: VisualDensity.compact,
-                        ),
-                      ),
-                  ],
-                );
-              },
+                ],
+              ),
             ),
           const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: _pickImages,
+                  onPressed: widget.isSaving ? null : _pickImages,
                   icon: const Icon(Icons.add_a_photo_outlined),
                   label: const Text('Thêm ảnh'),
                 ),
@@ -137,7 +126,7 @@ class _RoomMediaStepState extends State<RoomMediaStep> {
               const SizedBox(width: 10),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: _pickVideo,
+                  onPressed: widget.isSaving ? null : _pickVideo,
                   icon: const Icon(Icons.video_call_outlined),
                   label: Text(
                     draft.videos.isEmpty ? 'Thêm video' : 'Đổi video',
@@ -156,7 +145,7 @@ class _RoomMediaStepState extends State<RoomMediaStep> {
                 ),
               ),
               TextButton.icon(
-                onPressed: () => _addSpace(context),
+                onPressed: widget.isSaving ? null : _addSpace,
                 icon: const Icon(Icons.add),
                 label: const Text('Thêm'),
               ),
@@ -165,24 +154,50 @@ class _RoomMediaStepState extends State<RoomMediaStep> {
           const SizedBox(height: 8),
           ...List.generate(draft.spaces.length, (index) {
             final space = draft.spaces[index];
-
             return Card(
               margin: const EdgeInsets.only(bottom: 9),
               child: ListTile(
-                leading: const CircleAvatar(
-                  child: Icon(Icons.meeting_room_outlined),
+                leading: CircleAvatar(
+                  child: Icon(
+                    space.privacyType == 'PRIVATE'
+                        ? Icons.lock_outline
+                        : Icons.groups_outlined,
+                  ),
                 ),
                 title: Text(
                   space.title,
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
-                subtitle: Text(space.description),
-                trailing: IconButton(
-                  onPressed: () {
-                    draft.removeSpace(index);
-                    setState(() {});
-                  },
-                  icon: const Icon(Icons.delete_outline),
+                subtitle: Text(
+                  '${space.description}\n'
+                  '${space.privacyType == 'PRIVATE' ? 'Riêng tư' : 'Dùng chung'}',
+                ),
+                isThreeLine: true,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    PopupMenuButton<String>(
+                      tooltip: 'Quyền sử dụng',
+                      onSelected: (value) => setState(() {
+                        space.privacyType = value;
+                        draft.changed();
+                      }),
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(
+                          value: 'PRIVATE',
+                          child: Text('Riêng tư'),
+                        ),
+                        PopupMenuItem(
+                          value: 'SHARED',
+                          child: Text('Dùng chung'),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      onPressed: () => setState(() => draft.removeSpace(index)),
+                      icon: const Icon(Icons.delete_outline),
+                    ),
+                  ],
                 ),
               ),
             );
@@ -192,14 +207,14 @@ class _RoomMediaStepState extends State<RoomMediaStep> {
     );
   }
 
-  Future<void> _addSpace(BuildContext context) async {
+  Future<void> _addSpace() async {
     final titleController = TextEditingController();
     final descriptionController = TextEditingController();
-
+    var privacyType = 'PRIVATE';
     final result = await showDialog<RoomSpaceDraft>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
           title: const Text('Thêm không gian'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -211,6 +226,21 @@ class _RoomMediaStepState extends State<RoomMediaStep> {
                   hintText: 'Ví dụ: Ban công',
                 ),
               ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: privacyType,
+                decoration: const InputDecoration(labelText: 'Quyền sử dụng'),
+                items: const [
+                  DropdownMenuItem(value: 'PRIVATE', child: Text('Riêng tư')),
+                  DropdownMenuItem(value: 'SHARED', child: Text('Dùng chung')),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    setDialogState(() => privacyType = value);
+                  }
+                },
+              ),
+              const SizedBox(height: 12),
               TextField(
                 controller: descriptionController,
                 decoration: const InputDecoration(labelText: 'Mô tả'),
@@ -225,12 +255,12 @@ class _RoomMediaStepState extends State<RoomMediaStep> {
             FilledButton(
               onPressed: () {
                 if (titleController.text.trim().isEmpty) return;
-
                 Navigator.pop(
                   context,
                   RoomSpaceDraft(
                     type: 'OTHER',
                     title: titleController.text.trim(),
+                    privacyType: privacyType,
                     description: descriptionController.text.trim(),
                   ),
                 );
@@ -238,16 +268,11 @@ class _RoomMediaStepState extends State<RoomMediaStep> {
               child: const Text('Thêm'),
             ),
           ],
-        );
-      },
+        ),
+      ),
     );
-
     titleController.dispose();
     descriptionController.dispose();
-
-    if (result != null) {
-      widget.draft.addSpace(result);
-      setState(() {});
-    }
+    if (result != null) setState(() => draft.addSpace(result));
   }
 }

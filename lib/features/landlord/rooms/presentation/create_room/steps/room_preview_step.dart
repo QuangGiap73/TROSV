@@ -42,13 +42,9 @@ class _RoomPreviewStepState extends State<RoomPreviewStep> {
   void initState() {
     super.initState();
 
-    _descriptionController = TextEditingController(
-      text: draft.description,
-    );
+    _descriptionController = TextEditingController(text: draft.description);
 
-    _houseRulesController = TextEditingController(
-      text: draft.houseRules,
-    );
+    _houseRulesController = TextEditingController(text: draft.houseRules);
   }
 
   @override
@@ -118,10 +114,36 @@ class _RoomPreviewStepState extends State<RoomPreviewStep> {
           ),
           const SizedBox(height: 20),
 
-          _CompletenessCard(
-            completed: _completedItems,
-            total: 5,
-          ),
+          if (draft.backendPreview case final preview?) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEAF9F5),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFCDEDE4)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.cloud_done_rounded, color: _greenDark),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Text(
+                      'Đã tải preview từ backend · '
+                      '${preview['status'] ?? 'DRAFT'}',
+                      style: const TextStyle(
+                        color: _greenDark,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          _CompletenessCard(completed: _completedItems, total: 5),
 
           const SizedBox(height: 16),
 
@@ -153,8 +175,7 @@ class _RoomPreviewStepState extends State<RoomPreviewStep> {
           _EditorCard(
             icon: Icons.rule_rounded,
             title: 'Nội quy',
-            subtitle:
-                'Quy định rõ ràng giúp hạn chế hiểu nhầm sau khi thuê.',
+            subtitle: 'Quy định rõ ràng giúp hạn chế hiểu nhầm sau khi thuê.',
             child: TextField(
               controller: _houseRulesController,
               minLines: 4,
@@ -177,11 +198,7 @@ class _RoomPreviewStepState extends State<RoomPreviewStep> {
 
           const Row(
             children: [
-              Icon(
-                Icons.visibility_outlined,
-                color: _greenDark,
-                size: 22,
-              ),
+              Icon(Icons.visibility_outlined, color: _greenDark, size: 22),
               SizedBox(width: 8),
               Text(
                 'Xem trước bài đăng',
@@ -198,25 +215,17 @@ class _RoomPreviewStepState extends State<RoomPreviewStep> {
 
           const Text(
             'Đây là cách thông tin phòng có thể hiển thị với người thuê.',
-            style: TextStyle(
-              fontSize: 12.5,
-              color: _textSecondary,
-            ),
+            style: TextStyle(fontSize: 12.5, color: _textSecondary),
           ),
 
           const SizedBox(height: 12),
 
-          _RoomPreviewCard(
-            draft: draft,
-          ),
+          _RoomPreviewCard(draft: draft),
 
           const SizedBox(height: 14),
 
           _ReviewNotice(
-            ready:
-                _hasBasicInformation &&
-                _hasLocation &&
-                _hasImage,
+            ready: _hasBasicInformation && _hasLocation && _hasImage,
           ),
         ],
       ),
@@ -229,32 +238,23 @@ class _RoomPreviewStepState extends State<RoomPreviewStep> {
 // =============================================================
 
 class _CompletenessCard extends StatelessWidget {
-  const _CompletenessCard({
-    required this.completed,
-    required this.total,
-  });
+  const _CompletenessCard({required this.completed, required this.total});
 
   final int completed;
   final int total;
 
   @override
   Widget build(BuildContext context) {
-    final progress =
-        total == 0 ? 0.0 : completed / total;
+    final progress = total == 0 ? 0.0 : completed / total;
 
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [
-            Color(0xFFE9F9F5),
-            Color(0xFFF5FCFA),
-          ],
+          colors: [Color(0xFFE9F9F5), Color(0xFFF5FCFA)],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFD2EFE7),
-        ),
+        border: Border.all(color: const Color(0xFFD2EFE7)),
       ),
       child: Row(
         children: [
@@ -275,8 +275,7 @@ class _CompletenessCard extends StatelessWidget {
                   child: CircularProgressIndicator(
                     value: progress,
                     strokeWidth: 4,
-                    backgroundColor:
-                        const Color(0xFFDCECE8),
+                    backgroundColor: const Color(0xFFDCECE8),
                     color: _green,
                   ),
                 ),
@@ -294,8 +293,7 @@ class _CompletenessCard extends StatelessWidget {
           const SizedBox(width: 12),
           const Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Kiểm tra độ hoàn thiện',
@@ -346,9 +344,7 @@ class _EditorCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(17),
-        border: Border.all(
-          color: _cardBorder,
-        ),
+        border: Border.all(color: _cardBorder),
         boxShadow: const [
           BoxShadow(
             color: Color(0x0A000000),
@@ -358,8 +354,7 @@ class _EditorCard extends StatelessWidget {
         ],
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -371,24 +366,18 @@ class _EditorCard extends StatelessWidget {
                   color: Color(0xFFDDF7F0),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  icon,
-                  color: _greenDark,
-                  size: 21,
-                ),
+                child: Icon(icon, color: _greenDark, size: 21),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       title,
                       style: const TextStyle(
                         fontSize: 16,
-                        fontWeight:
-                            FontWeight.w800,
+                        fontWeight: FontWeight.w800,
                         color: _textPrimary,
                       ),
                     ),
@@ -419,29 +408,23 @@ class _EditorCard extends StatelessWidget {
 // =============================================================
 
 class _RoomPreviewCard extends StatelessWidget {
-  const _RoomPreviewCard({
-    required this.draft,
-  });
+  const _RoomPreviewCard({required this.draft});
 
   final CreateRoomDraft draft;
 
   @override
   Widget build(BuildContext context) {
-    final visibleAmenities =
-        draft.amenityCodes.take(5).toList();
+    final visibleAmenities = draft.amenityCodes.take(5).toList();
 
     final remainingAmenities =
-        draft.amenityCodes.length -
-        visibleAmenities.length;
+        draft.amenityCodes.length - visibleAmenities.length;
 
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: _cardBorder,
-        ),
+        border: Border.all(color: _cardBorder),
         boxShadow: const [
           BoxShadow(
             color: Color(0x10000000),
@@ -451,8 +434,7 @@ class _RoomPreviewCard extends StatelessWidget {
         ],
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Stack(
             children: [
@@ -460,45 +442,29 @@ class _RoomPreviewCard extends StatelessWidget {
                 aspectRatio: 16 / 9,
                 child: draft.images.isEmpty
                     ? Container(
-                        color:
-                            const Color(0xFFE8F0EE),
-                        alignment:
-                            Alignment.center,
+                        color: const Color(0xFFE8F0EE),
+                        alignment: Alignment.center,
                         child: const Column(
-                          mainAxisAlignment:
-                              MainAxisAlignment
-                                  .center,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              Icons
-                                  .image_outlined,
+                              Icons.image_outlined,
                               size: 48,
-                              color:
-                                  Color(
-                                0xFF8FA9A3,
-                              ),
+                              color: Color(0xFF8FA9A3),
                             ),
-                            SizedBox(
-                              height: 6,
-                            ),
+                            SizedBox(height: 6),
                             Text(
                               'Chưa có ảnh phòng',
                               style: TextStyle(
                                 fontSize: 12,
-                                color:
-                                    _textSecondary,
+                                color: _textSecondary,
                               ),
                             ),
                           ],
                         ),
                       )
                     : Image.file(
-                        File(
-                          draft
-                              .images
-                              .first
-                              .path,
-                        ),
+                        File(draft.images.first.path),
                         fit: BoxFit.cover,
                       ),
               ),
@@ -508,31 +474,20 @@ class _RoomPreviewCard extends StatelessWidget {
                   left: 12,
                   top: 12,
                   child: Container(
-                    padding:
-                        const EdgeInsets
-                            .symmetric(
+                    padding: const EdgeInsets.symmetric(
                       horizontal: 9,
                       vertical: 5,
                     ),
-                    decoration:
-                        BoxDecoration(
-                      color: Colors.black
-                          .withValues(
-                        alpha: 0.62,
-                      ),
-                      borderRadius:
-                          BorderRadius
-                              .circular(20),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.62),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Text(
                       'Ảnh đại diện',
                       style: TextStyle(
-                        color:
-                            Colors.white,
+                        color: Colors.white,
                         fontSize: 10.5,
-                        fontWeight:
-                            FontWeight
-                                .w600,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -543,31 +498,20 @@ class _RoomPreviewCard extends StatelessWidget {
                   right: 12,
                   bottom: 12,
                   child: Container(
-                    padding:
-                        const EdgeInsets
-                            .symmetric(
+                    padding: const EdgeInsets.symmetric(
                       horizontal: 9,
                       vertical: 5,
                     ),
-                    decoration:
-                        BoxDecoration(
-                      color: Colors.black
-                          .withValues(
-                        alpha: 0.62,
-                      ),
-                      borderRadius:
-                          BorderRadius
-                              .circular(20),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.62),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
                       '1/${draft.images.length}',
                       style: const TextStyle(
-                        color:
-                            Colors.white,
+                        color: Colors.white,
                         fontSize: 10.5,
-                        fontWeight:
-                            FontWeight
-                                .w600,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -578,21 +522,18 @@ class _RoomPreviewCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.all(14),
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   draft.title.trim().isEmpty
                       ? 'Phòng chưa có tiêu đề'
                       : draft.title.trim(),
                   maxLines: 2,
-                  overflow:
-                      TextOverflow.ellipsis,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 18,
                     height: 1.2,
-                    fontWeight:
-                        FontWeight.w900,
+                    fontWeight: FontWeight.w900,
                     color: _textPrimary,
                   ),
                 ),
@@ -604,8 +545,7 @@ class _RoomPreviewCard extends StatelessWidget {
                   style: const TextStyle(
                     color: _greenDark,
                     fontSize: 19,
-                    fontWeight:
-                        FontWeight.w900,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
 
@@ -616,23 +556,17 @@ class _RoomPreviewCard extends StatelessWidget {
                   runSpacing: 7,
                   children: [
                     _InfoChip(
-                      icon:
-                          Icons.square_foot_rounded,
-                      text:
-                          '${_formatArea(draft.areaM2)} m²',
+                      icon: Icons.square_foot_rounded,
+                      text: '${_formatArea(draft.areaM2)} m²',
                     ),
                     _InfoChip(
-                      icon:
-                          Icons.people_alt_outlined,
-                      text:
-                          'Tối đa ${draft.maxPeople} người',
+                      icon: Icons.people_alt_outlined,
+                      text: 'Tối đa ${draft.maxPeople} người',
                     ),
                     if (draft.floor != null)
                       _InfoChip(
-                        icon:
-                            Icons.stairs_rounded,
-                        text:
-                            'Tầng ${draft.floor}',
+                        icon: Icons.stairs_rounded,
+                        text: 'Tầng ${draft.floor}',
                       ),
                   ],
                 ),
@@ -640,8 +574,7 @@ class _RoomPreviewCard extends StatelessWidget {
                 const SizedBox(height: 13),
 
                 Row(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Icon(
                       Icons.location_on_rounded,
@@ -651,45 +584,25 @@ class _RoomPreviewCard extends StatelessWidget {
                     const SizedBox(width: 7),
                     Expanded(
                       child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment
-                                .start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (draft
-                              .propertyName
-                              .trim()
-                              .isNotEmpty)
+                          if (draft.propertyName.trim().isNotEmpty)
                             Text(
-                              draft
-                                  .propertyName
-                                  .trim(),
-                              style:
-                                  const TextStyle(
+                              draft.propertyName.trim(),
+                              style: const TextStyle(
                                 fontSize: 12.5,
-                                fontWeight:
-                                    FontWeight
-                                        .w700,
-                                color:
-                                    _textPrimary,
+                                fontWeight: FontWeight.w700,
+                                color: _textPrimary,
                               ),
                             ),
-                          if (draft
-                              .addressText
-                              .trim()
-                              .isNotEmpty) ...[
-                            const SizedBox(
-                              height: 2,
-                            ),
+                          if (draft.addressText.trim().isNotEmpty) ...[
+                            const SizedBox(height: 2),
                             Text(
-                              draft
-                                  .addressText
-                                  .trim(),
-                              style:
-                                  const TextStyle(
+                              draft.addressText.trim(),
+                              style: const TextStyle(
                                 fontSize: 11.5,
                                 height: 1.3,
-                                color:
-                                    _textSecondary,
+                                color: _textSecondary,
                               ),
                             ),
                           ],
@@ -699,53 +612,33 @@ class _RoomPreviewCard extends StatelessWidget {
                   ],
                 ),
 
-                if (visibleAmenities
-                    .isNotEmpty) ...[
+                if (visibleAmenities.isNotEmpty) ...[
                   const SizedBox(height: 13),
-                  const Divider(
-                    height: 1,
-                    color:
-                        Color(0xFFE9EFED),
-                  ),
+                  const Divider(height: 1, color: Color(0xFFE9EFED)),
                   const SizedBox(height: 12),
                   Wrap(
                     spacing: 7,
                     runSpacing: 7,
                     children: [
                       ...visibleAmenities.map(
-                        (code) => _AmenityChip(
-                          code: code,
-                        ),
+                        (code) => _AmenityChip(code: code),
                       ),
                       if (remainingAmenities > 0)
                         Container(
-                          padding:
-                              const EdgeInsets
-                                  .symmetric(
+                          padding: const EdgeInsets.symmetric(
                             horizontal: 9,
                             vertical: 6,
                           ),
-                          decoration:
-                              BoxDecoration(
-                            color:
-                                const Color(
-                              0xFFF3F6F5,
-                            ),
-                            borderRadius:
-                                BorderRadius
-                                    .circular(20),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3F6F5),
+                            borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
                             '+$remainingAmenities tiện ích',
-                            style:
-                                const TextStyle(
-                              fontSize:
-                                  10.5,
-                              color:
-                                  _textSecondary,
-                              fontWeight:
-                                  FontWeight
-                                      .w600,
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              color: _textSecondary,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
@@ -753,16 +646,13 @@ class _RoomPreviewCard extends StatelessWidget {
                   ),
                 ],
 
-                if (draft.description
-                    .trim()
-                    .isNotEmpty) ...[
+                if (draft.description.trim().isNotEmpty) ...[
                   const SizedBox(height: 14),
                   const Text(
                     'Mô tả',
                     style: TextStyle(
                       fontSize: 13,
-                      fontWeight:
-                          FontWeight.w800,
+                      fontWeight: FontWeight.w800,
                       color: _textPrimary,
                     ),
                   ),
@@ -770,8 +660,7 @@ class _RoomPreviewCard extends StatelessWidget {
                   Text(
                     draft.description.trim(),
                     maxLines: 3,
-                    overflow:
-                        TextOverflow.ellipsis,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 11.5,
                       height: 1.4,
@@ -789,10 +678,7 @@ class _RoomPreviewCard extends StatelessWidget {
 }
 
 class _InfoChip extends StatelessWidget {
-  const _InfoChip({
-    required this.icon,
-    required this.text,
-  });
+  const _InfoChip({required this.icon, required this.text});
 
   final IconData icon;
   final String text;
@@ -800,25 +686,16 @@ class _InfoChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 9,
-        vertical: 6,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
       decoration: BoxDecoration(
         color: const Color(0xFFF4F8F7),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFFE0E9E6),
-        ),
+        border: Border.all(color: const Color(0xFFE0E9E6)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 15,
-            color: const Color(0xFF526B65),
-          ),
+          Icon(icon, size: 15, color: const Color(0xFF526B65)),
           const SizedBox(width: 5),
           Text(
             text,
@@ -835,34 +712,23 @@ class _InfoChip extends StatelessWidget {
 }
 
 class _AmenityChip extends StatelessWidget {
-  const _AmenityChip({
-    required this.code,
-  });
+  const _AmenityChip({required this.code});
 
   final String code;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 9,
-        vertical: 6,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
       decoration: BoxDecoration(
         color: _greenSoft,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFFCDEDE4),
-        ),
+        border: Border.all(color: const Color(0xFFCDEDE4)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            _amenityIcon(code),
-            size: 14,
-            color: _greenDark,
-          ),
+          Icon(_amenityIcon(code), size: 14, color: _greenDark),
           const SizedBox(width: 5),
           Text(
             _amenityLabel(code),
@@ -883,9 +749,7 @@ class _AmenityChip extends StatelessWidget {
 // =============================================================
 
 class _ReviewNotice extends StatelessWidget {
-  const _ReviewNotice({
-    required this.ready,
-  });
+  const _ReviewNotice({required this.ready});
 
   final bool ready;
 
@@ -895,30 +759,23 @@ class _ReviewNotice extends StatelessWidget {
         ? const Color(0xFFEAF9F0)
         : const Color(0xFFFFF7E7);
 
-    final border = ready
-        ? const Color(0xFFCDEEDB)
-        : const Color(0xFFF2DFB2);
+    final border = ready ? const Color(0xFFCDEEDB) : const Color(0xFFF2DFB2);
 
     final iconBackground = ready
         ? const Color(0xFFD5F3E1)
         : const Color(0xFFFFEBC1);
 
-    final iconColor = ready
-        ? const Color(0xFF2DAA67)
-        : const Color(0xFFD78A17);
+    final iconColor = ready ? const Color(0xFF2DAA67) : const Color(0xFFD78A17);
 
     return Container(
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: border,
-        ),
+        border: Border.all(color: border),
       ),
       child: Row(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 38,
@@ -929,9 +786,7 @@ class _ReviewNotice extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: Icon(
-              ready
-                  ? Icons.check_circle_rounded
-                  : Icons.info_rounded,
+              ready ? Icons.check_circle_rounded : Icons.info_rounded,
               color: iconColor,
               size: 21,
             ),
@@ -939,8 +794,7 @@ class _ReviewNotice extends StatelessWidget {
           const SizedBox(width: 11),
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   ready
@@ -977,9 +831,7 @@ class _ReviewNotice extends StatelessWidget {
 // HELPERS
 // =============================================================
 
-InputDecoration _textAreaDecoration({
-  required String hint,
-}) {
+InputDecoration _textAreaDecoration({required String hint}) {
   return InputDecoration(
     hintText: hint,
     hintStyle: const TextStyle(
@@ -992,22 +844,15 @@ InputDecoration _textAreaDecoration({
     contentPadding: const EdgeInsets.all(13),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(
-        color: Color(0xFFDDE6E3),
-      ),
+      borderSide: const BorderSide(color: Color(0xFFDDE6E3)),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(
-        color: Color(0xFFDDE6E3),
-      ),
+      borderSide: const BorderSide(color: Color(0xFFDDE6E3)),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(
-        color: _green,
-        width: 1.4,
-      ),
+      borderSide: const BorderSide(color: _green, width: 1.4),
     ),
   );
 }
@@ -1029,14 +874,11 @@ String _money(int value) {
   final buffer = StringBuffer();
 
   for (var index = 0; index < digits.length; index++) {
-    if (index > 0 &&
-        (digits.length - index) % 3 == 0) {
+    if (index > 0 && (digits.length - index) % 3 == 0) {
       buffer.write('.');
     }
 
-    buffer.write(
-      digits[index],
-    );
+    buffer.write(digits[index]);
   }
 
   return buffer.toString();
@@ -1094,10 +936,7 @@ String _amenityLabel(String code) {
       .toLowerCase()
       .split(' ')
       .where((item) => item.isNotEmpty)
-      .map(
-        (item) =>
-            '${item[0].toUpperCase()}${item.substring(1)}',
-      )
+      .map((item) => '${item[0].toUpperCase()}${item.substring(1)}')
       .join(' ');
 }
 

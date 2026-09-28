@@ -10,6 +10,13 @@ import '../providers/property_location_provider.dart';
 import '../widgets/create_room_step_layout.dart';
 import 'property_inline_map.dart';
 
+const _green = Color(0xFF00A884);
+const _greenDark = Color(0xFF008C72);
+const _cardBorder = Color(0xFFE3ECE9);
+const _textPrimary = Color(0xFF17211F);
+const _textSecondary = Color(0xFF667773);
+const _fieldFill = Color(0xFFF9FBFA);
+
 class PropertyStep extends ConsumerStatefulWidget {
   const PropertyStep({
     required this.draft,
@@ -24,7 +31,6 @@ class PropertyStep extends ConsumerStatefulWidget {
   final CreateRoomDraft draft;
   final List<LandlordProperty> properties;
   final bool isLoadingProperties;
-
   final VoidCallback onRetryProperties;
   final VoidCallback onNext;
   final VoidCallback onClose;
@@ -104,12 +110,11 @@ class _PropertyStepState extends ConsumerState<PropertyStep> {
   @override
   Widget build(BuildContext context) {
     final draft = widget.draft;
-
     final editingNewProperty = draft.propertyId == null;
 
     return CreateRoomStepLayout(
       step: 1,
-      title: 'Vị trí khu trọ',
+      title: '',
       onBack: widget.onClose,
       onNext: () {
         if (!draft.isPropertyValid) {
@@ -124,130 +129,137 @@ class _PropertyStepState extends ConsumerState<PropertyStep> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          DropdownButtonFormField<String>(
-            initialValue: draft.propertyId ?? _newPropertyValue,
-            isExpanded: true,
-            decoration: const InputDecoration(
-              labelText: 'Khu trọ của bạn',
-              prefixIcon: Icon(Icons.apartment_rounded),
-              border: OutlineInputBorder(),
-            ),
-            items: [
-              const DropdownMenuItem<String>(
-                value: _newPropertyValue,
-                child: Text('Tạo khu trọ mới'),
-              ),
-              ...widget.properties.map(
-                (property) => DropdownMenuItem<String>(
-                  value: property.id,
-                  child: Text(property.name, overflow: TextOverflow.ellipsis),
-                ),
-              ),
-            ],
+          const _PageHeader(),
+
+          const SizedBox(height: 20),
+
+          _PropertySelectorCard(
+            selectedValue: draft.propertyId ?? _newPropertyValue,
+            properties: widget.properties,
+            loading: widget.isLoadingProperties,
             onChanged: widget.isLoadingProperties ? null : _onPropertyChanged,
+            onRetry: widget.onRetryProperties,
           ),
-
-          if (widget.isLoadingProperties)
-            const LinearProgressIndicator(minHeight: 2),
-
-          if (!widget.isLoadingProperties && widget.properties.isEmpty)
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: widget.onRetryProperties,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Tải lại danh sách'),
-              ),
-            ),
 
           const SizedBox(height: 18),
 
-          CreateRoomTextField(
-            controller: _nameController,
-            label: 'Tên khu trọ',
-            required: true,
-            enabled: editingNewProperty,
-            hint: 'Ví dụ: Nhà trọ An Bình',
-            onChanged: (value) {
-              draft.propertyName = value;
-              draft.changed();
-            },
+          _FormSection(
+            icon: Icons.home_work_rounded,
+            title: 'Thông tin khu trọ',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CreateRoomTextField(
+                  controller: _nameController,
+                  label: 'Tên khu trọ',
+                  required: true,
+                  enabled: editingNewProperty,
+                  hint: 'Ví dụ: Nhà trọ Bình Minh',
+                  onChanged: (value) {
+                    draft.propertyName = value;
+                    draft.changed();
+                  },
+                ),
+
+                Focus(
+                  onFocusChange: (hasFocus) {
+                    if (!hasFocus) {
+                      Future<void>.delayed(
+                        const Duration(milliseconds: 160),
+                        () {
+                          if (!mounted ||
+                              _selectingSuggestion ||
+                              _addressFocusNode.hasFocus) {
+                            return;
+                          }
+
+                          _clearSuggestionState();
+                        },
+                      );
+                    }
+                  },
+                  child: CreateRoomTextField(
+                    controller: _addressController,
+                    focusNode: _addressFocusNode,
+                    label: 'Địa chỉ',
+                    required: true,
+                    enabled: editingNewProperty,
+                    keyboardType: TextInputType.streetAddress,
+                    hint: 'Nhập số nhà, tên đường hoặc địa điểm...',
+                    onChanged: editingNewProperty ? _onAddressChanged : (_) {},
+                  ),
+                ),
+
+                if (editingNewProperty)
+                  _AutocompleteArea(
+                    loading: _loadingSuggestions,
+                    selecting: _selectingSuggestion,
+                    error: _autocompleteError,
+                    suggestions: _suggestions,
+                    onSelected: _selectSuggestion,
+                  ),
+              ],
+            ),
           ),
 
-          Focus(
-            onFocusChange: (hasFocus) {
-              if (!hasFocus) {
-                Future<void>.delayed(const Duration(milliseconds: 160), () {
-                  if (!mounted ||
-                      _selectingSuggestion ||
-                      _addressFocusNode.hasFocus) {
-                    return;
-                  }
+          const SizedBox(height: 16),
 
-                  _clearSuggestionState();
-                });
-              }
-            },
-            child: CreateRoomTextField(
-              controller: _addressController,
-              focusNode: _addressFocusNode,
-              label: 'Địa chỉ',
-              required: true,
+          _MapSection(
+            child: PropertyInlineMap(
+              latitude: draft.latitude,
+              longitude: draft.longitude,
+              addressText: draft.addressText,
               enabled: editingNewProperty,
-              keyboardType: TextInputType.streetAddress,
-              hint: 'Nhập số nhà, tên đường hoặc địa điểm...',
-              onChanged: editingNewProperty ? _onAddressChanged : (_) {},
+              onLocationChanged: _onMapLocationChanged,
             ),
           ),
 
-          if (editingNewProperty)
-            _AutocompleteArea(
-              loading: _loadingSuggestions,
-              selecting: _selectingSuggestion,
-              error: _autocompleteError,
-              suggestions: _suggestions,
-              onSelected: _selectSuggestion,
+          const SizedBox(height: 16),
+
+          _FormSection(
+            icon: Icons.location_city_rounded,
+            title: 'Khu vực hành chính',
+            subtitle: editingNewProperty
+                ? 'Thông tin được tự động điền khi bạn chọn địa chỉ hoặc kéo bản đồ.'
+                : 'Thông tin khu vực của khu trọ đã chọn.',
+            child: Column(
+              children: [
+                CreateRoomTextField(
+                  controller: _provinceController,
+                  label: 'Tỉnh/Thành phố',
+                  required: true,
+                  enabled: editingNewProperty,
+                  onChanged: (value) {
+                    draft.province = value;
+                    draft.changed();
+                  },
+                ),
+                CreateRoomTextField(
+                  controller: _districtController,
+                  label: 'Quận/Huyện',
+                  enabled: editingNewProperty,
+                  onChanged: (value) {
+                    draft.district = value;
+                    draft.changed();
+                  },
+                ),
+                CreateRoomTextField(
+                  controller: _wardController,
+                  label: 'Phường/Xã',
+                  required: true,
+                  enabled: editingNewProperty,
+                  onChanged: (value) {
+                    draft.ward = value;
+                    draft.changed();
+                  },
+                ),
+              ],
             ),
-
-          PropertyInlineMap(
-            latitude: draft.latitude,
-            longitude: draft.longitude,
-            addressText: draft.addressText,
-            enabled: editingNewProperty,
-            onLocationChanged: _onMapLocationChanged,
           ),
 
-          CreateRoomTextField(
-            controller: _provinceController,
-            label: 'Tỉnh/Thành phố',
-            required: true,
-            enabled: editingNewProperty,
-            onChanged: (value) {
-              draft.province = value;
-              draft.changed();
-            },
-          ),
+          const SizedBox(height: 14),
 
-          CreateRoomTextField(
-            controller: _districtController,
-            label: 'Quận/Huyện',
-            enabled: editingNewProperty,
-            onChanged: (value) {
-              draft.district = value;
-              draft.changed();
-            },
-          ),
-
-          CreateRoomTextField(
-            controller: _wardController,
-            label: 'Phường/Xã',
-            required: true,
-            enabled: editingNewProperty,
-            onChanged: (value) {
-              draft.ward = value;
-              draft.changed();
-            },
-          ),
+          const _LocationTip(),
         ],
       ),
     );
@@ -272,17 +284,11 @@ class _PropertyStepState extends ConsumerState<PropertyStep> {
     });
   }
 
-  /// User đang gõ:
-  /// - chỉ cập nhật chữ họ đang nhập;
-  /// - KHÔNG tự chọn kết quả;
-  /// - KHÔNG tự di chuyển map.
   void _onAddressChanged(String value) {
     final draft = widget.draft;
 
     draft.addressText = value;
 
-    // Nếu trước đó đã chọn một vị trí mà user bắt đầu sửa địa chỉ,
-    // tọa độ cũ không còn được xem là địa chỉ đã xác nhận.
     if (draft.latitude != null || draft.longitude != null) {
       draft.latitude = null;
       draft.longitude = null;
@@ -348,8 +354,6 @@ class _PropertyStepState extends ConsumerState<PropertyStep> {
         return;
       }
 
-      // Chỉ hiển thị suggestion nếu input hiện tại
-      // vẫn đúng với truy vấn đã gửi.
       if (_addressController.text.trim() != input) {
         return;
       }
@@ -375,8 +379,6 @@ class _PropertyStepState extends ConsumerState<PropertyStep> {
     }
   }
 
-  /// Chỉ TẠI ĐÂY map mới được di chuyển từ ô search.
-  /// Hàm chỉ chạy khi user bấm một suggestion.
   Future<void> _selectSuggestion(GoongPlacePrediction prediction) async {
     if (_selectingSuggestion) {
       return;
@@ -433,8 +435,6 @@ class _PropertyStepState extends ConsumerState<PropertyStep> {
 
       _addressFocusNode.unfocus();
 
-      // Chỉ rebuild một lần sau khi đã chọn.
-      // PropertyInlineMap nhận lat/lng mới và animate tới đó.
       setState(() {
         _suggestions = const [];
         _selectingSuggestion = false;
@@ -452,11 +452,6 @@ class _PropertyStepState extends ConsumerState<PropertyStep> {
     }
   }
 
-  /// Chiều ngược:
-  /// User kéo map -> reverse geocode -> cập nhật form.
-  ///
-  /// Không gọi autocomplete lại vì controller.text được thay
-  /// bằng code, không phải thao tác gõ của user.
   void _onMapLocationChanged(PropertyInlineMapResult result) {
     if (widget.draft.propertyId != null) {
       return;
@@ -499,10 +494,7 @@ class _PropertyStepState extends ConsumerState<PropertyStep> {
     }
   }
 
-  void _handleAddressFocusChanged() {
-    // Listener thật của TextField.
-    // Focus wrapper phía trên xử lý việc đóng suggestion.
-  }
+  void _handleAddressFocusChanged() {}
 
   void _clearSuggestionState() {
     if (!mounted) {
@@ -561,6 +553,404 @@ class _PropertyStepState extends ConsumerState<PropertyStep> {
   }
 }
 
+// =============================================================
+// PAGE HEADER
+// =============================================================
+
+class _PageHeader extends StatelessWidget {
+  const _PageHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.location_on_rounded, color: _greenDark, size: 25),
+            SizedBox(width: 8),
+            Text(
+              'Vị trí khu trọ',
+              style: TextStyle(
+                fontSize: 25,
+                height: 1.1,
+                fontWeight: FontWeight.w900,
+                color: _textPrimary,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 7),
+        Text(
+          'Chọn hoặc tạo khu trọ, sau đó xác định vị trí chính xác '
+          'để người thuê dễ dàng tìm thấy phòng của bạn.',
+          style: TextStyle(fontSize: 13.5, height: 1.45, color: _textSecondary),
+        ),
+      ],
+    );
+  }
+}
+
+// =============================================================
+// PROPERTY SELECTOR
+// =============================================================
+
+class _PropertySelectorCard extends StatelessWidget {
+  const _PropertySelectorCard({
+    required this.selectedValue,
+    required this.properties,
+    required this.loading,
+    required this.onChanged,
+    required this.onRetry,
+  });
+
+  final String selectedValue;
+  final List<LandlordProperty> properties;
+  final bool loading;
+  final ValueChanged<String?>? onChanged;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: _cardBorder),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 14,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFDDF7F0),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.apartment_rounded,
+                  color: _greenDark,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Khu trọ của bạn',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: _textPrimary,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Chọn khu trọ có sẵn hoặc tạo khu trọ mới.',
+                      style: TextStyle(fontSize: 11.5, color: _textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          DropdownButtonFormField<String>(
+            initialValue: selectedValue,
+            isExpanded: true,
+            icon: const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: _greenDark,
+            ),
+            decoration: _selectorDecoration(),
+            items: [
+              const DropdownMenuItem<String>(
+                value: _PropertyStepState._newPropertyValue,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.add_business_rounded,
+                      size: 19,
+                      color: _greenDark,
+                    ),
+                    SizedBox(width: 9),
+                    Expanded(
+                      child: Text(
+                        'Tạo khu trọ mới',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              ...properties.map(
+                (property) => DropdownMenuItem<String>(
+                  value: property.id,
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.home_work_outlined,
+                        size: 18,
+                        color: Color(0xFF526B65),
+                      ),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Text(
+                          property.name,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+            onChanged: onChanged,
+          ),
+
+          if (loading) ...[
+            const SizedBox(height: 8),
+            const LinearProgressIndicator(
+              minHeight: 2,
+              color: _green,
+              backgroundColor: Color(0xFFE3F1ED),
+            ),
+          ],
+
+          if (!loading && properties.isEmpty) ...[
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Tải lại danh sách'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// =============================================================
+// FORM SECTION
+// =============================================================
+
+class _FormSection extends StatelessWidget {
+  const _FormSection({
+    required this.icon,
+    required this.title,
+    required this.child,
+    this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: _cardBorder),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFDDF7F0),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: _greenDark, size: 21),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: _textPrimary,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle!,
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          height: 1.3,
+                          color: _textSecondary,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 13),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+// =============================================================
+// MAP SECTION
+// =============================================================
+
+class _MapSection extends StatelessWidget {
+  const _MapSection({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _cardBorder),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 14,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(5, 4, 5, 9),
+            child: Row(
+              children: [
+                Icon(Icons.map_rounded, color: _greenDark, size: 21),
+                SizedBox(width: 7),
+                Text(
+                  'Chọn vị trí trên bản đồ',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: _textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ClipRRect(borderRadius: BorderRadius.circular(14), child: child),
+        ],
+      ),
+    );
+  }
+}
+
+// =============================================================
+// LOCATION TIP
+// =============================================================
+
+class _LocationTip extends StatelessWidget {
+  const _LocationTip();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEAF7FA),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFD5EEF5)),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: Color(0xFFBCE8F5),
+            child: Icon(
+              Icons.location_searching_rounded,
+              color: Color(0xFF159BD3),
+              size: 21,
+            ),
+          ),
+          SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Vị trí chính xác rất quan trọng',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF146D67),
+                  ),
+                ),
+                SizedBox(height: 3),
+                Text(
+                  'Ghim đúng vị trí giúp người thuê dễ tìm phòng, '
+                  'ước lượng khoảng cách đến trường và xem đường đi thuận tiện hơn.',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    height: 1.35,
+                    color: _textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =============================================================
+// AUTOCOMPLETE
+// =============================================================
+
 class _AutocompleteArea extends StatelessWidget {
   const _AutocompleteArea({
     required this.loading,
@@ -585,10 +975,13 @@ class _AutocompleteArea extends StatelessWidget {
           children: [
             SizedBox.square(
               dimension: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
+              child: CircularProgressIndicator(strokeWidth: 2, color: _green),
             ),
             SizedBox(width: 9),
-            Text('Đang lấy vị trí đã chọn...', style: TextStyle(fontSize: 12)),
+            Text(
+              'Đang lấy vị trí đã chọn...',
+              style: TextStyle(fontSize: 12, color: _textSecondary),
+            ),
           ],
         ),
       );
@@ -601,10 +994,13 @@ class _AutocompleteArea extends StatelessWidget {
           children: [
             SizedBox.square(
               dimension: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
+              child: CircularProgressIndicator(strokeWidth: 2, color: _green),
             ),
             SizedBox(width: 9),
-            Text('Đang tìm địa điểm...', style: TextStyle(fontSize: 12)),
+            Text(
+              'Đang tìm địa điểm...',
+              style: TextStyle(fontSize: 12, color: _textSecondary),
+            ),
           ],
         ),
       );
@@ -617,24 +1013,37 @@ class _AutocompleteArea extends StatelessWidget {
 
       return Padding(
         padding: const EdgeInsets.only(top: 2, bottom: 14),
-        child: Text(
-          error!,
-          style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.info_outline_rounded,
+              size: 17,
+              color: Colors.redAccent,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                error!,
+                style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+              ),
+            ),
+          ],
         ),
       );
     }
 
     return Container(
       margin: const EdgeInsets.only(top: 2, bottom: 16),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFDDE5E2)),
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: const Color(0xFFD7E5E1)),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 10,
-            offset: Offset(0, 3),
+            color: Color(0x12000000),
+            blurRadius: 12,
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -649,7 +1058,7 @@ class _AutocompleteArea extends StatelessWidget {
               },
             ),
             if (i != suggestions.length - 1)
-              const Divider(height: 1, indent: 50),
+              const Divider(height: 1, indent: 54, color: Color(0xFFE8EEEC)),
           ],
         ],
       ),
@@ -665,60 +1074,94 @@ class _SuggestionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 30,
-              height: 30,
-              alignment: Alignment.center,
-              decoration: const BoxDecoration(
-                color: Color(0xFFE8F5F2),
-                shape: BoxShape.circle,
+    return Material(
+      color: Colors.white,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE8F8F3),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.location_on_rounded,
+                  size: 18,
+                  color: _greenDark,
+                ),
               ),
-              child: const Icon(
-                Icons.location_on_outlined,
-                size: 18,
-                color: Color(0xFF008E78),
-              ),
-            ),
-            const SizedBox(width: 9),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    prediction.mainText,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  if (prediction.secondaryText.isNotEmpty) ...[
-                    const SizedBox(height: 2),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      prediction.secondaryText,
-                      maxLines: 2,
+                      prediction.mainText,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF6B7673),
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: _textPrimary,
                       ),
                     ),
+                    if (prediction.secondaryText.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        prediction.secondaryText,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          height: 1.3,
+                          color: _textSecondary,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-          ],
+              const SizedBox(width: 6),
+              const Icon(
+                Icons.north_west_rounded,
+                size: 16,
+                color: Color(0xFF8AA19B),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+// =============================================================
+// DECORATION
+// =============================================================
+
+InputDecoration _selectorDecoration() {
+  return InputDecoration(
+    filled: true,
+    fillColor: _fieldFill,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: Color(0xFFDDE6E3)),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: Color(0xFFDDE6E3)),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: _green, width: 1.4),
+    ),
+  );
 }

@@ -48,6 +48,74 @@ class CreateRoomRemoteDataSource {
     return id;
   }
 
+  Future<void> updateRoom(String roomId, Map<String, dynamic> payload) async {
+    await _dio.patch<Map<String, dynamic>>(
+      '/api/v1/landlord/rooms/$roomId',
+      data: payload,
+    );
+  }
+
+  Future<Map<String, dynamic>> getRoomDetail(String roomId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/landlord/rooms/$roomId',
+    );
+    return _mapData(response);
+  }
+
+  Future<PresignedMediaUpload> presignMedia({
+    required String roomId,
+    required XFile file,
+    required String contentType,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/media/presign',
+      data: {
+        'room_id': roomId,
+        'filename': file.name,
+        'content_type': contentType,
+        'file_size': await file.length(),
+      },
+    );
+    return PresignedMediaUpload.fromJson(_mapData(response));
+  }
+
+  Future<void> uploadToPresignedUrl({
+    required PresignedMediaUpload presigned,
+    required XFile file,
+    required String contentType,
+  }) async {
+    final storageDio = Dio();
+    try {
+      await storageDio.put<void>(
+        presigned.uploadUrl,
+        data: file.openRead(),
+        options: Options(
+          contentType: contentType,
+          headers: {'Content-Length': await file.length()},
+        ),
+      );
+    } finally {
+      storageDio.close();
+    }
+  }
+
+  Future<void> confirmMedia({
+    required String roomId,
+    required String objectKey,
+    required bool isPrimary,
+    required int sortOrder,
+  }) async {
+    await _dio.post<Map<String, dynamic>>(
+      '/api/v1/media/confirm',
+      data: {
+        'room_id': roomId,
+        'object_key': objectKey,
+        'is_primary': isPrimary,
+        'sort_order': sortOrder,
+      },
+    );
+  }
+
   Future<void> addSpace(String roomId, Map<String, dynamic> payload) =>
       _dio.post<Map<String, dynamic>>(
         '/api/v1/landlord/rooms/$roomId/spaces',

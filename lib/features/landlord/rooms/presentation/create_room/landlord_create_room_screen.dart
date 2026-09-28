@@ -38,6 +38,47 @@ class _LandlordCreateRoomScreenState
     if (_currentStep < 4) setState(() => _currentStep++);
   }
 
+  Future<void> _createDraftAndNext() async {
+    final success = await ref
+        .read(createRoomControllerProvider.notifier)
+        .ensureDraftRoom(_draft);
+    if (!mounted) return;
+    if (success) {
+      _next();
+    } else {
+      _showControllerError();
+    }
+  }
+
+  Future<void> _saveMediaSpacesAndNext() async {
+    final success = await ref
+        .read(createRoomControllerProvider.notifier)
+        .syncMediaAndSpaces(_draft);
+    if (!mounted) return;
+    if (success) {
+      _next();
+    } else {
+      _showControllerError();
+    }
+  }
+
+  Future<void> _saveCostsAndOpenPreview() async {
+    final controller = ref.read(createRoomControllerProvider.notifier);
+    final saved = await controller.saveCostsAndAmenities(_draft);
+    if (!mounted) return;
+    if (!saved) {
+      _showControllerError();
+      return;
+    }
+    final previewed = await controller.refreshPreview(_draft);
+    if (!mounted) return;
+    if (previewed) {
+      _next();
+    } else {
+      _showControllerError();
+    }
+  }
+
   void _back() {
     if (_currentStep == 0) {
       context.pop();
@@ -53,13 +94,12 @@ class _LandlordCreateRoomScreenState
       _message('Thông tin phòng chưa đầy đủ.');
       return;
     }
-    final roomId = await ref
+    final success = await ref
         .read(createRoomControllerProvider.notifier)
-        .save(_draft, submit: submit);
+        .finish(_draft, submit: submit);
     if (!mounted) return;
-    if (roomId == null) {
-      final error = ref.read(createRoomControllerProvider).error;
-      _message(_errorText(error));
+    if (!success) {
+      _showControllerError();
       return;
     }
     _message(
@@ -68,6 +108,10 @@ class _LandlordCreateRoomScreenState
           : 'Đã lưu phòng ở trạng thái bản nháp.',
     );
     context.pop(true);
+  }
+
+  void _showControllerError() {
+    _message(_errorText(ref.read(createRoomControllerProvider).error));
   }
 
   @override
@@ -90,17 +134,24 @@ class _LandlordCreateRoomScreenState
         RoomInformationStep(
           draft: _draft,
           onBack: _back,
-          onNext: _next,
+          onNext: _createDraftAndNext,
           onChangeProperty: () => setState(() => _currentStep = 0),
+          isSaving: action.isLoading,
         ),
-        RoomMediaStep(draft: _draft, onBack: _back, onNext: _next),
+        RoomMediaStep(
+          draft: _draft,
+          onBack: _back,
+          onNext: _saveMediaSpacesAndNext,
+          isSaving: action.isLoading,
+        ),
         RoomCostStep(
           draft: _draft,
           amenities: amenities.value ?? const [],
           isLoadingAmenities: amenities.isLoading,
           onRetryAmenities: () => ref.invalidate(roomAmenitiesProvider),
           onBack: _back,
-          onNext: _next,
+          onNext: _saveCostsAndOpenPreview,
+          isSaving: action.isLoading,
         ),
         RoomPreviewStep(
           draft: _draft,

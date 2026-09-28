@@ -66,3 +66,20 @@ class UploadedRoomMedia {
     'media_type': mediaType,
   };
 }
+
+class PresignedMediaUpload {
+  const PresignedMediaUpload({
+    required this.uploadUrl,
+    required this.objectKey,
+  });
+
+  factory PresignedMediaUpload.fromJson(Map<String, dynamic> json) {
+    return PresignedMediaUpload(
+      uploadUrl: json['upload_url'] as String,
+      objectKey: json['object_key'] as String,
+    );
+  }
+
+  final String uploadUrl;
+  final String objectKey;
+}
