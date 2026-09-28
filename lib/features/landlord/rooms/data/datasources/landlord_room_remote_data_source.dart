@@ -5,10 +5,17 @@ class LandlordRoomRemoteDataSource {
   const LandlordRoomRemoteDataSource(this._dio);
   final Dio _dio;
 
-  Future<List<LandlordRoom>> getRooms({String? status}) async {
+  Future<List<LandlordRoom>> getRooms({
+    String? status,
+    String? propertyId,
+  }) async {
+    final queryParameters = <String, dynamic>{};
+    if (status != null) queryParameters['status'] = status;
+    if (propertyId != null) queryParameters['property_id'] = propertyId;
+
     final response = await _dio.get<Map<String, dynamic>>(
       '/api/v1/landlord/rooms',
-      queryParameters: status == null ? null : {'status': status},
+      queryParameters: queryParameters,
     );
     final envelope = response.data;
     final data = envelope?['data'];
@@ -19,5 +26,40 @@ class LandlordRoomRemoteDataSource {
         .whereType<Map<String, dynamic>>()
         .map(LandlordRoom.fromJson)
         .toList(growable: false);
+  }
+
+  Future<void> deleteRoom(String roomId) async {
+    await _dio.delete<Map<String, dynamic>>('/api/v1/landlord/rooms/$roomId');
+  }
+
+  Future<void> updateVisibility(String roomId, {required bool visible}) async {
+    await _dio.patch<Map<String, dynamic>>(
+      '/api/v1/landlord/rooms/$roomId/visibility',
+      data: {'visible': visible},
+    );
+  }
+
+  Future<void> submitRoom(String roomId) async {
+    await _dio.post<Map<String, dynamic>>(
+      '/api/v1/landlord/rooms/$roomId/submit',
+    );
+  }
+
+  Future<void> confirmAvailability(String roomId) async {
+    await _dio.post<Map<String, dynamic>>(
+      '/api/v1/landlord/rooms/$roomId/confirm-availability',
+    );
+  }
+
+  Future<void> markRented(String roomId) async {
+    await _dio.post<Map<String, dynamic>>(
+      '/api/v1/landlord/rooms/$roomId/mark-rented',
+    );
+  }
+
+  Future<void> unmarkRented(String roomId) async {
+    await _dio.post<Map<String, dynamic>>(
+      '/api/v1/landlord/rooms/$roomId/unmark-rented',
+    );
   }
 }

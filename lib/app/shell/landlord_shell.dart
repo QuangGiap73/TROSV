@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class LandlordShell extends StatelessWidget {
-  const LandlordShell({required this.navigationShell, super.key});
+  const LandlordShell({
+    required this.navigationShell,
+    super.key,
+  });
 
   final StatefulNavigationShell navigationShell;
 
@@ -21,22 +24,22 @@ class LandlordShell extends StatelessWidget {
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
+            selectedIcon: Icon(Icons.dashboard_rounded),
             label: 'Tổng quan',
           ),
           NavigationDestination(
             icon: Icon(Icons.home_work_outlined),
-            selectedIcon: Icon(Icons.home_work),
+            selectedIcon: Icon(Icons.home_work_rounded),
             label: 'Phòng',
           ),
           NavigationDestination(
             icon: Icon(Icons.calendar_month_outlined),
-            selectedIcon: Icon(Icons.calendar_month),
+            selectedIcon: Icon(Icons.calendar_month_rounded),
             label: 'Lịch hẹn',
           ),
           NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
+            icon: Icon(Icons.person_outline_rounded),
+            selectedIcon: Icon(Icons.person_rounded),
             label: 'Tài khoản',
           ),
         ],

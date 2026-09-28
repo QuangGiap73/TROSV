@@ -8,26 +8,29 @@ import '../../features/home/presentation/home_screen.dart';
 import '../../features/landlord/appointments/presentation/landlord_appointments_screen.dart';
 import '../../features/landlord/dashboard/presentation/landlord_dashboard_screen.dart';
 import '../../features/landlord/profile/presentation/landlord_profile_screen.dart';
-import '../../features/landlord/rooms/presentation/landlord_rooms_screen.dart';
-import '../../features/profile/presentation/profile_screen.dart';
-import '../../features/profile/presentation/personal_info_screen.dart';
-import '../../features/profile/presentation/edit_profile_screen.dart';
-import '../../features/profile/presentation/change_password_screen.dart';
-import '../../features/profile/presentation/location_settings_screen.dart';
-import '../../features/rooms/presentation/screens/room_detail_screen.dart';
-import '../../features/search/presentation/search_screen.dart';
-import '../shell/app_shell.dart';
-import '../shell/landlord_shell.dart';
+import '../../features/landlord/rooms/presentation/screens/landlord_rooms_screen.dart';
 import '../../features/preferences/presentation/screens/preference_screen.dart';
+import '../../features/profile/presentation/change_password_screen.dart';
+import '../../features/profile/presentation/edit_profile_screen.dart';
+import '../../features/profile/presentation/location_settings_screen.dart';
+import '../../features/profile/presentation/personal_info_screen.dart';
+import '../../features/profile/presentation/profile_screen.dart';
+import '../../features/rooms/presentation/screens/room_detail_screen.dart';
+import '../../features/rooms/presentation/screens/room_map_screen.dart';
 import '../../features/rooms/presentation/screens/room_match_screen.dart';
 import '../../features/rooms/presentation/screens/roommate_screen.dart';
-import '../../features/rooms/presentation/screens/room_map_screen.dart';
+import '../../features/search/presentation/search_screen.dart';
+import '../../features/landlord/rooms/presentation/create_room/landlord_create_room_screen.dart';
+import '../shell/app_shell.dart';
+import '../shell/landlord_shell.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/start',
     routes: [
       GoRoute(path: '/start', builder: (_, _) => const RoleLandingScreen()),
+
+      // Tenant shell
       StatefulShellRoute.indexedStack(
         builder: (_, _, navigationShell) =>
             AppShell(navigationShell: navigationShell),
@@ -66,6 +69,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
+
+      // Landlord shell
       StatefulShellRoute.indexedStack(
         builder: (_, _, navigationShell) =>
             LandlordShell(navigationShell: navigationShell),
@@ -104,6 +109,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
+
+      // Màn đăng phòng mở full-screen, không giữ bottom navigation.
+      GoRoute(
+        path: '/landlord/rooms/create',
+        builder: (_, _) => const LandlordCreateRoomScreen(),
+      ),
+
       GoRoute(
         path: '/rooms/matches',
         builder: (_, _) => const RoomMatchScreen(),
@@ -113,9 +125,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/rooms/:roomId',
         builder: (_, state) {
           final roomId = state.pathParameters['roomId'];
+
           if (roomId == null || roomId.isEmpty) {
             throw StateError('Thiếu mã phòng.');
           }
+
           return RoomDetailScreen(roomId: roomId);
         },
       ),

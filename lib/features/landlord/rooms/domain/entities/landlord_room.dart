@@ -33,7 +33,7 @@ class LandlordRoom {
     maxPeople: (json['max_people'] as num?)?.toInt() ?? 0,
     priceMonthly: (json['price_monthly'] as num?)?.toInt() ?? 0,
     depositAmount: (json['deposit_amount'] as num?)?.toInt() ?? 0,
-    availableDate: DateTime.parse(json['available_date'] as String),
+    availableDate: _requiredDate(json, 'available_date'),
     status: json['status'] as String? ?? 'DRAFT',
     rejectionReason: json['rejection_reason'] as String?,
     viewsCount: (json['views_count'] as num?)?.toInt() ?? 0,
@@ -45,8 +45,8 @@ class LandlordRoom {
     lastConfirmedAt: DateTime.tryParse(
       json['last_confirmed_at'] as String? ?? '',
     ),
-    createdAt: DateTime.parse(json['created_at'] as String),
-    updatedAt: DateTime.parse(json['updated_at'] as String),
+    createdAt: _requiredDate(json, 'created_at'),
+    updatedAt: _requiredDate(json, 'updated_at'),
   );
 
   final String id, propertyId, title, roomType, status;
@@ -63,4 +63,13 @@ class LandlordRoom {
     district,
     province,
   ].whereType<String>().where((item) => item.trim().isNotEmpty).join(', ');
+}
+
+DateTime _requiredDate(Map<String, dynamic> json, String key) {
+  final raw = json[key];
+  if (raw is String) {
+    final value = DateTime.tryParse(raw);
+    if (value != null) return value;
+  }
+  throw FormatException('Trường ngày $key không hợp lệ.');
 }
