@@ -6,7 +6,6 @@ import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../../../../../../core/config/goong_config.dart';
 import '../../../../../../core/location/location_provider.dart';
-import '../../../domain/entities/location/geocoded_address.dart';
 import '../providers/property_location_provider.dart';
 
 class PropertyInlineMapResult {
@@ -44,15 +43,11 @@ class PropertyInlineMap extends ConsumerStatefulWidget {
   final ValueChanged<PropertyInlineMapResult> onLocationChanged;
 
   @override
-  ConsumerState<PropertyInlineMap> createState() =>
-      _PropertyInlineMapState();
+  ConsumerState<PropertyInlineMap> createState() => _PropertyInlineMapState();
 }
 
 class _PropertyInlineMapState extends ConsumerState<PropertyInlineMap> {
-  static const LatLng _defaultTarget = LatLng(
-    21.0285,
-    105.8542,
-  );
+  static const LatLng _defaultTarget = LatLng(21.0285, 105.8542);
 
   MapLibreMapController? _controller;
 
@@ -77,50 +72,37 @@ class _PropertyInlineMapState extends ConsumerState<PropertyInlineMap> {
   void initState() {
     super.initState();
 
-    _hasLocation =
-        widget.latitude != null && widget.longitude != null;
+    _hasLocation = widget.latitude != null && widget.longitude != null;
 
     _selected = _hasLocation
-        ? LatLng(
-            widget.latitude!,
-            widget.longitude!,
-          )
+        ? LatLng(widget.latitude!, widget.longitude!)
         : _defaultTarget;
 
     _addressState = ValueNotifier<_AddressPanelState>(
       widget.addressText.trim().isNotEmpty
-          ? _AddressPanelState.ready(
-              widget.addressText.trim(),
-            )
+          ? _AddressPanelState.ready(widget.addressText.trim())
           : const _AddressPanelState.idle(),
     );
   }
 
   @override
-  void didUpdateWidget(
-    covariant PropertyInlineMap oldWidget,
-  ) {
+  void didUpdateWidget(covariant PropertyInlineMap oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    final hasNewLocation =
-        widget.latitude != null && widget.longitude != null;
+    final hasNewLocation = widget.latitude != null && widget.longitude != null;
 
     if (!hasNewLocation) {
       _hasLocation = false;
       _lastReverseTarget = null;
 
       if (widget.addressText.trim().isEmpty) {
-        _addressState.value =
-            const _AddressPanelState.idle();
+        _addressState.value = const _AddressPanelState.idle();
       }
 
       return;
     }
 
-    final target = LatLng(
-      widget.latitude!,
-      widget.longitude!,
-    );
+    final target = LatLng(widget.latitude!, widget.longitude!);
 
     final targetChanged =
         !_hasLocation ||
@@ -133,9 +115,7 @@ class _PropertyInlineMapState extends ConsumerState<PropertyInlineMap> {
     /// cập nhật text trên panel map nhưng không reverse lại.
     if (widget.addressText.trim().isNotEmpty &&
         widget.addressText != oldWidget.addressText) {
-      _addressState.value = _AddressPanelState.ready(
-        widget.addressText.trim(),
-      );
+      _addressState.value = _AddressPanelState.ready(widget.addressText.trim());
     }
 
     if (!targetChanged) {
@@ -148,10 +128,7 @@ class _PropertyInlineMapState extends ConsumerState<PropertyInlineMap> {
     /// không cần reverse lại ngay sau animate.
     _lastReverseTarget = target;
 
-    _animateTo(
-      target,
-      zoom: 16,
-    );
+    _animateTo(target, zoom: 16);
   }
 
   @override
@@ -171,9 +148,7 @@ class _PropertyInlineMapState extends ConsumerState<PropertyInlineMap> {
           color: const Color(0xFFE9EFED),
           borderRadius: BorderRadius.circular(14),
         ),
-        child: const Text(
-          'Chưa cấu hình GOONG_MAPTILES_KEY.',
-        ),
+        child: const Text('Chưa cấu hình GOONG_MAPTILES_KEY.'),
       );
     }
 
@@ -183,9 +158,7 @@ class _PropertyInlineMapState extends ConsumerState<PropertyInlineMap> {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: const Color(0xFFD6E3E0),
-        ),
+        border: Border.all(color: const Color(0xFFD6E3E0)),
       ),
       child: Stack(
         children: [
@@ -218,20 +191,15 @@ class _PropertyInlineMapState extends ConsumerState<PropertyInlineMap> {
                 onMapCreated: (controller) {
                   _controller = controller;
 
-                  if (_hasLocation &&
-                      widget.addressText.trim().isEmpty) {
-                    _reverseGeocode(
-                      _selected,
-                      emitToForm: false,
-                    );
+                  if (_hasLocation && widget.addressText.trim().isEmpty) {
+                    _reverseGeocode(_selected, emitToForm: false);
                   }
                 },
 
                 /// Không setState ở đây.
                 /// Chỉ giữ tọa độ mới nhất trong biến local.
                 onCameraMove: (position) {
-                  if (!widget.enabled ||
-                      _programmaticCameraMove) {
+                  if (!widget.enabled || _programmaticCameraMove) {
                     return;
                   }
 
@@ -265,14 +233,11 @@ class _PropertyInlineMapState extends ConsumerState<PropertyInlineMap> {
                 heroTag: 'property-inline-current-location',
                 backgroundColor: Colors.white,
                 foregroundColor: const Color(0xFF008E78),
-                onPressed:
-                    _locating ? null : _goToCurrentLocation,
+                onPressed: _locating ? null : _goToCurrentLocation,
                 child: _locating
                     ? const Padding(
                         padding: EdgeInsets.all(10),
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                        ),
+                        child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.my_location),
               ),
@@ -285,9 +250,7 @@ class _PropertyInlineMapState extends ConsumerState<PropertyInlineMap> {
             child: ValueListenableBuilder<_AddressPanelState>(
               valueListenable: _addressState,
               builder: (context, state, _) {
-                return _AddressPanel(
-                  state: state,
-                );
+                return _AddressPanel(state: state);
               },
             ),
           ),
@@ -327,28 +290,18 @@ class _PropertyInlineMapState extends ConsumerState<PropertyInlineMap> {
 
     /// Ưu tiên lấy tâm thật từ controller.
     /// _selected là fallback nếu controller chưa có cameraPosition.
-    final target =
-        _controller?.cameraPosition?.target ?? _selected;
+    final target = _controller?.cameraPosition?.target ?? _selected;
 
     _selected = target;
 
-    if (_isSameLocation(
-      target,
-      _lastReverseTarget,
-    )) {
+    if (_isSameLocation(target, _lastReverseTarget)) {
       return;
     }
 
-    _reverseGeocode(
-      target,
-      emitToForm: true,
-    );
+    _reverseGeocode(target, emitToForm: true);
   }
 
-  bool _isSameLocation(
-    LatLng first,
-    LatLng? second,
-  ) {
+  bool _isSameLocation(LatLng first, LatLng? second) {
     if (second == null) {
       return false;
     }
@@ -365,8 +318,7 @@ class _PropertyInlineMapState extends ConsumerState<PropertyInlineMap> {
 
     _hasLocation = true;
 
-    _addressState.value =
-        const _AddressPanelState.loading();
+    _addressState.value = const _AddressPanelState.loading();
 
     try {
       final result = await ref
@@ -382,10 +334,7 @@ class _PropertyInlineMapState extends ConsumerState<PropertyInlineMap> {
 
       _lastReverseTarget = target;
 
-      _addressState.value =
-          _AddressPanelState.ready(
-        result.formattedAddress,
-      );
+      _addressState.value = _AddressPanelState.ready(result.formattedAddress);
 
       if (!emitToForm) {
         return;
@@ -406,15 +355,11 @@ class _PropertyInlineMapState extends ConsumerState<PropertyInlineMap> {
         return;
       }
 
-      _addressState.value =
-          const _AddressPanelState.error();
+      _addressState.value = const _AddressPanelState.error();
     }
   }
 
-  Future<void> _animateTo(
-    LatLng target, {
-    required double zoom,
-  }) async {
+  Future<void> _animateTo(LatLng target, {required double zoom}) async {
     final controller = _controller;
 
     if (controller == null) {
@@ -427,17 +372,12 @@ class _PropertyInlineMapState extends ConsumerState<PropertyInlineMap> {
     try {
       await controller.animateCamera(
         CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: target,
-            zoom: zoom,
-          ),
+          CameraPosition(target: target, zoom: zoom),
         ),
       );
     } finally {
       /// Đợi idle callback của animateCamera kết thúc.
-      await Future<void>.delayed(
-        const Duration(milliseconds: 120),
-      );
+      await Future<void>.delayed(const Duration(milliseconds: 120));
 
       if (mounted) {
         _programmaticCameraMove = false;
@@ -459,27 +399,18 @@ class _PropertyInlineMapState extends ConsumerState<PropertyInlineMap> {
           .read(locationServiceProvider)
           .getCurrentPosition();
 
-      final target = LatLng(
-        position.latitude,
-        position.longitude,
-      );
+      final target = LatLng(position.latitude, position.longitude);
 
       _hasLocation = true;
       _selected = target;
 
-      await _animateTo(
-        target,
-        zoom: 16,
-      );
+      await _animateTo(target, zoom: 16);
 
       /// Nút vị trí hiện tại là một lựa chọn mới,
       /// vì vậy reverse geocode và đẩy lại về form.
       _lastReverseTarget = null;
 
-      await _reverseGeocode(
-        target,
-        emitToForm: true,
-      );
+      await _reverseGeocode(target, emitToForm: true);
     } catch (error) {
       if (!mounted) {
         return;
@@ -487,11 +418,7 @@ class _PropertyInlineMapState extends ConsumerState<PropertyInlineMap> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            error
-                .toString()
-                .replaceFirst('Exception: ', ''),
-          ),
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
         ),
       );
     } finally {
@@ -505,9 +432,7 @@ class _PropertyInlineMapState extends ConsumerState<PropertyInlineMap> {
 }
 
 class _AddressPanel extends StatelessWidget {
-  const _AddressPanel({
-    required this.state,
-  });
+  const _AddressPanel({required this.state});
 
   final _AddressPanelState state;
 
@@ -518,10 +443,7 @@ class _AddressPanel extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       color: Colors.white,
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 10,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -534,39 +456,37 @@ class _AddressPanel extends StatelessWidget {
             Expanded(
               child: switch (state.type) {
                 _AddressPanelType.idle => const Text(
-                    'Nhập địa chỉ hoặc kéo bản đồ để chọn vị trí.',
-                    style: TextStyle(fontSize: 12),
-                  ),
+                  'Nhập địa chỉ hoặc kéo bản đồ để chọn vị trí.',
+                  style: TextStyle(fontSize: 12),
+                ),
                 _AddressPanelType.loading => const Row(
-                    children: [
-                      SizedBox.square(
-                        dimension: 14,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Đang xác định địa chỉ...',
-                          style: TextStyle(fontSize: 12),
-                        ),
-                      ),
-                    ],
-                  ),
-                _AddressPanelType.error => const Text(
-                    'Không lấy được địa chỉ tại vị trí này.',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                _AddressPanelType.ready => Text(
-                    state.text ?? '',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                  children: [
+                    SizedBox.square(
+                      dimension: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
                     ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Đang xác định địa chỉ...',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+                _AddressPanelType.error => const Text(
+                  'Không lấy được địa chỉ tại vị trí này.',
+                  style: TextStyle(fontSize: 12),
+                ),
+                _AddressPanelType.ready => Text(
+                  state.text ?? '',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
                   ),
+                ),
               },
             ),
           ],
@@ -576,44 +496,19 @@ class _AddressPanel extends StatelessWidget {
   }
 }
 
-enum _AddressPanelType {
-  idle,
-  loading,
-  ready,
-  error,
-}
+enum _AddressPanelType { idle, loading, ready, error }
 
 class _AddressPanelState {
-  const _AddressPanelState._(
-    this.type,
-    this.text,
-  );
+  const _AddressPanelState._(this.type, this.text);
 
-  const _AddressPanelState.idle()
-      : this._(
-          _AddressPanelType.idle,
-          null,
-        );
+  const _AddressPanelState.idle() : this._(_AddressPanelType.idle, null);
 
-  const _AddressPanelState.loading()
-      : this._(
-          _AddressPanelType.loading,
-          null,
-        );
+  const _AddressPanelState.loading() : this._(_AddressPanelType.loading, null);
 
-  const _AddressPanelState.error()
-      : this._(
-          _AddressPanelType.error,
-          null,
-        );
+  const _AddressPanelState.error() : this._(_AddressPanelType.error, null);
 
-  factory _AddressPanelState.ready(
-    String text,
-  ) {
-    return _AddressPanelState._(
-      _AddressPanelType.ready,
-      text,
-    );
+  factory _AddressPanelState.ready(String text) {
+    return _AddressPanelState._(_AddressPanelType.ready, text);
   }
 
   final _AddressPanelType type;

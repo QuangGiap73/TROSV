@@ -24,6 +24,20 @@ class GeocodedLocation {
   final GeocodedAddress address;
 }
 
+class GoongPlacePrediction {
+  const GoongPlacePrediction({
+    required this.placeId,
+    required this.description,
+    required this.mainText,
+    required this.secondaryText,
+  });
+
+  final String placeId;
+  final String description;
+  final String mainText;
+  final String secondaryText;
+}
+
 typedef LocationCoordinates = ({
   double latitude,
   double longitude,

@@ -87,7 +87,12 @@ class _LandlordCreateRoomScreenState
           onClose: () => context.pop(),
           onNext: _next,
         ),
-        RoomInformationStep(draft: _draft, onBack: _back, onNext: _next),
+        RoomInformationStep(
+          draft: _draft,
+          onBack: _back,
+          onNext: _next,
+          onChangeProperty: () => setState(() => _currentStep = 0),
+        ),
         RoomMediaStep(draft: _draft, onBack: _back, onNext: _next),
         RoomCostStep(
           draft: _draft,

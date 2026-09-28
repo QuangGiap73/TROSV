@@ -7,75 +7,155 @@ class GoongLocationDataSource {
 
   final Dio _dio;
 
+  /// Map -> địa chỉ.
+  ///
+  /// Chỉ nên gọi khi người dùng dừng kéo map.
   Future<GeocodedAddress> reverseGeocode({
     required double latitude,
     required double longitude,
   }) async {
     final response = await _dio.get<Map<String, dynamic>>(
-      '/Geocode',
+      '/v2/geocode',
       queryParameters: {
         'latlng': '$latitude,$longitude',
+        'limit': 1,
+        'has_deprecated_administrative_unit': true,
       },
     );
 
-    final first = _firstResult(response.data);
+    final first = _firstGeocodeResult(response.data);
+
     return _parseAddress(first);
   }
 
+  /// Fallback: địa chỉ đầy đủ -> tọa độ.
+  ///
+  /// Không dùng hàm này để tự động nhảy map khi user đang gõ.
   Future<GeocodedLocation> forwardGeocode({
     required String address,
   }) async {
     final query = address.trim();
 
-    if (query.length < 5) {
+    if (query.length < 3) {
       throw const FormatException(
         'Địa chỉ quá ngắn để tìm vị trí.',
       );
     }
 
     final response = await _dio.get<Map<String, dynamic>>(
-      '/Geocode',
+      '/v2/geocode',
       queryParameters: {
         'address': query,
+        'has_deprecated_administrative_unit': true,
       },
     );
 
-    final first = _firstResult(response.data);
+    final first = _firstGeocodeResult(response.data);
 
-    final rawGeometry = first['geometry'];
-    if (rawGeometry is! Map) {
-      throw const FormatException(
-        'Goong không trả về thông tin tọa độ.',
-      );
-    }
-
-    final geometry = Map<String, dynamic>.from(rawGeometry);
-
-    final rawLocation = geometry['location'];
-    if (rawLocation is! Map) {
-      throw const FormatException(
-        'Goong không trả về vị trí hợp lệ.',
-      );
-    }
-
-    final location = Map<String, dynamic>.from(rawLocation);
-    final latitude = (location['lat'] as num?)?.toDouble();
-    final longitude = (location['lng'] as num?)?.toDouble();
-
-    if (latitude == null || longitude == null) {
-      throw const FormatException(
-        'Tọa độ Goong trả về không hợp lệ.',
-      );
-    }
-
-    return GeocodedLocation(
-      latitude: latitude,
-      longitude: longitude,
-      address: _parseAddress(first),
-    );
+    return _locationFromResult(first);
   }
 
-  Map<String, dynamic> _firstResult(
+  /// User đang gõ -> chỉ trả danh sách gợi ý.
+  ///
+  /// Hàm này KHÔNG thay đổi text, KHÔNG thay đổi map.
+  Future<List<GoongPlacePrediction>> autocomplete({
+    required String input,
+    int limit = 5,
+  }) async {
+    final query = input.trim();
+
+    if (query.length < 2) {
+      return const [];
+    }
+
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/v2/place/autocomplete',
+      queryParameters: {
+        'input': query,
+        'limit': limit,
+        'more_compound': true,
+        'has_deprecated_administrative_unit': true,
+      },
+    );
+
+    final rawPredictions = response.data?['predictions'];
+
+    if (rawPredictions is! List) {
+      return const [];
+    }
+
+    return rawPredictions
+        .whereType<Map>()
+        .map((raw) {
+          final item = Map<String, dynamic>.from(raw);
+
+          final placeId =
+              (item['place_id'] as String? ?? '').trim();
+
+          final description =
+              (item['description'] as String? ?? '').trim();
+
+          final rawFormatting = item['structured_formatting'];
+
+          final formatting = rawFormatting is Map
+              ? Map<String, dynamic>.from(rawFormatting)
+              : <String, dynamic>{};
+
+          final mainText =
+              (formatting['main_text'] as String? ?? '').trim();
+
+          final secondaryText =
+              (formatting['secondary_text'] as String? ?? '').trim();
+
+          return GoongPlacePrediction(
+            placeId: placeId,
+            description: description,
+            mainText: mainText.isNotEmpty ? mainText : description,
+            secondaryText: secondaryText,
+          );
+        })
+        .where(
+          (item) =>
+              item.placeId.isNotEmpty &&
+              item.description.isNotEmpty,
+        )
+        .toList(growable: false);
+  }
+
+  /// Chỉ gọi sau khi user chủ động bấm một suggestion.
+  Future<GeocodedLocation> placeDetail({
+    required String placeId,
+  }) async {
+    final id = placeId.trim();
+
+    if (id.isEmpty) {
+      throw const FormatException(
+        'place_id không hợp lệ.',
+      );
+    }
+
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/v2/place/detail',
+      queryParameters: {
+        'place_id': id,
+        'has_deprecated_administrative_unit': true,
+      },
+    );
+
+    final rawResult = response.data?['result'];
+
+    if (rawResult is! Map) {
+      throw const FormatException(
+        'Không lấy được chi tiết địa điểm.',
+      );
+    }
+
+    final result = Map<String, dynamic>.from(rawResult);
+
+    return _locationFromResult(result);
+  }
+
+  Map<String, dynamic> _firstGeocodeResult(
     Map<String, dynamic>? data,
   ) {
     final results = data?['results'];
@@ -90,124 +170,107 @@ class GoongLocationDataSource {
 
     if (first is! Map) {
       throw const FormatException(
-        'Dữ liệu địa chỉ Goong không hợp lệ.',
+        'Dữ liệu Goong không hợp lệ.',
       );
     }
 
     return Map<String, dynamic>.from(first);
   }
 
+  GeocodedLocation _locationFromResult(
+    Map<String, dynamic> result,
+  ) {
+    final rawGeometry = result['geometry'];
+
+    if (rawGeometry is! Map) {
+      throw const FormatException(
+        'Goong không trả về tọa độ.',
+      );
+    }
+
+    final geometry = Map<String, dynamic>.from(rawGeometry);
+    final rawLocation = geometry['location'];
+
+    if (rawLocation is! Map) {
+      throw const FormatException(
+        'Vị trí Goong không hợp lệ.',
+      );
+    }
+
+    final location = Map<String, dynamic>.from(rawLocation);
+
+    final latitude = (location['lat'] as num?)?.toDouble();
+    final longitude = (location['lng'] as num?)?.toDouble();
+
+    if (latitude == null || longitude == null) {
+      throw const FormatException(
+        'Tọa độ Goong không hợp lệ.',
+      );
+    }
+
+    return GeocodedLocation(
+      latitude: latitude,
+      longitude: longitude,
+      address: _parseAddress(result),
+    );
+  }
+
   GeocodedAddress _parseAddress(
     Map<String, dynamic> result,
   ) {
-    final formatted =
+    final formattedAddress =
         (result['formatted_address'] as String? ?? '').trim();
 
-    final rawComponents = result['address_components'];
+    final compound = _mapOrEmpty(result['compound']);
+    final deprecatedCompound =
+        _mapOrEmpty(result['deprecated_compound']);
 
-    final components = rawComponents is List
-        ? rawComponents
-            .whereType<Map>()
-            .map((item) => Map<String, dynamic>.from(item))
-            .toList()
-        : <Map<String, dynamic>>[];
+    // V2 ưu tiên địa giới hiện hành.
+    final province = _firstNonEmpty([
+      compound['province'],
+      deprecatedCompound['province'],
+    ]);
 
-    final province = _findComponent(
-      components,
-      const [
-        'province',
-        'administrative_area_level_1',
-      ],
-      const [
-        'tỉnh ',
-        'thành phố ',
-      ],
-    );
+    final ward = _firstNonEmpty([
+      compound['commune'],
+      compound['ward'],
+      deprecatedCompound['commune'],
+      deprecatedCompound['ward'],
+    ]);
 
-    final district = _findComponent(
-      components,
-      const [
-        'district',
-        'administrative_area_level_2',
-      ],
-      const [
-        'quận ',
-        'huyện ',
-        'thị xã ',
-        'thành phố ',
-      ],
-    );
-
-    final ward = _findComponent(
-      components,
-      const [
-        'ward',
-        'administrative_area_level_3',
-        'sublocality',
-      ],
-      const [
-        'phường ',
-        'xã ',
-        'thị trấn ',
-      ],
-    );
-
-    final names = components
-        .map(
-          (item) =>
-              (item['long_name'] as String? ?? '').trim(),
-        )
-        .where((name) => name.isNotEmpty)
-        .toList();
+    // Backend hiện tại của app vẫn có field district.
+    // V2 có thể không trả district trong compound hiện hành,
+    // nên dùng deprecated_compound làm dữ liệu tương thích nếu có.
+    final district = _firstNonEmpty([
+      compound['district'],
+      deprecatedCompound['district'],
+    ]);
 
     return GeocodedAddress(
-      formattedAddress: formatted.isNotEmpty
-          ? formatted
-          : names.join(', '),
-      province: province.isNotEmpty
-          ? province
-          : names.isNotEmpty
-              ? names.last
-              : '',
-      district: district.isNotEmpty
-          ? district
-          : names.length >= 2
-              ? names[names.length - 2]
-              : '',
-      ward: ward.isNotEmpty
-          ? ward
-          : names.length >= 3
-              ? names[names.length - 3]
-              : '',
+      formattedAddress: formattedAddress,
+      province: province,
+      district: district,
+      ward: ward,
     );
   }
-}
 
-String _findComponent(
-  List<Map<String, dynamic>> components,
-  List<String> acceptedTypes,
-  List<String> acceptedPrefixes,
-) {
-  for (final component in components) {
-    final types =
-        (component['types'] as List?)?.whereType<String>() ??
-            const <String>[];
-
-    if (types.any(acceptedTypes.contains)) {
-      return (component['long_name'] as String? ?? '').trim();
+  Map<String, dynamic> _mapOrEmpty(dynamic value) {
+    if (value is Map) {
+      return Map<String, dynamic>.from(value);
     }
+
+    return <String, dynamic>{};
   }
 
-  for (final component in components.reversed) {
-    final name =
-        (component['long_name'] as String? ?? '').trim();
+  String _firstNonEmpty(List<dynamic> values) {
+    for (final value in values) {
+      final text = value?.toString().trim() ?? '';
 
-    final lower = name.toLowerCase();
-
-    if (acceptedPrefixes.any(lower.startsWith)) {
-      return name;
+      if (text.isNotEmpty) {
+        return text;
+      }
     }
-  }
 
-  return '';
+    return '';
+  }
 }
