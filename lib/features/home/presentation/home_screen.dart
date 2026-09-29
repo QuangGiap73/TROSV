@@ -46,7 +46,14 @@ class HomeScreen extends ConsumerWidget {
               child: HomeHeader(
                 userName: user?.name,
                 onLocationTap: () => _comingSoon(context, 'Chọn khu vực'),
-                onNotificationTap: () => _comingSoon(context, 'Thông báo'),
+                onNotificationTap: () async {
+                  if (session == null) {
+                    ref.read(authControllerProvider.notifier).clearError();
+                    final loggedIn = await context.push<bool>('/login');
+                    if (loggedIn != true || !context.mounted) return;
+                  }
+                  if (context.mounted) context.push('/notifications');
+                },
                 onSearchTap: () => context.go('/search'),
                 onFindRoomTap: () => context.go('/search'),
                 onRoommateTap: () => context.go('/roommate'),

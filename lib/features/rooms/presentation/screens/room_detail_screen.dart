@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/currency_formatter.dart';
 import '../../domain/entities/room_detail.dart';
 import '../providers/room_providers.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 
 class RoomDetailScreen extends ConsumerWidget {
   const RoomDetailScreen({required this.roomId, super.key});
@@ -25,7 +27,9 @@ class RoomDetailScreen extends ConsumerWidget {
           ? SafeArea(
               minimum: const EdgeInsets.all(16),
               child: FilledButton.icon(
-                onPressed: () {},
+                onPressed: room.asData?.value.status == 'PUBLISHED'
+                    ? () => _openBooking(context, ref, room.asData!.value)
+                    : null,
                 icon: const Icon(Icons.calendar_month_outlined),
                 label: const Padding(
                   padding: EdgeInsets.symmetric(vertical: 14),
@@ -34,6 +38,27 @@ class RoomDetailScreen extends ConsumerWidget {
               ),
             )
           : null,
+    );
+  }
+
+  Future<void> _openBooking(
+    BuildContext context,
+    WidgetRef ref,
+    RoomDetail room,
+  ) async {
+    var session = ref.read(authControllerProvider).asData?.value;
+    if (session == null) {
+      ref.read(authControllerProvider.notifier).clearError();
+      final loggedIn = await context.push<bool>('/login');
+      if (loggedIn != true || !context.mounted) return;
+      session = ref.read(authControllerProvider).asData?.value;
+    }
+    if (session == null || !context.mounted) return;
+    await context.push<bool>(
+      Uri(
+        path: '/appointments/create',
+        queryParameters: {'roomId': room.id, 'roomTitle': room.title},
+      ).toString(),
     );
   }
 }

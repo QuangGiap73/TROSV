@@ -65,7 +65,7 @@ class _RoomPreviewStepState extends State<RoomPreviewStep> {
       draft.propertyName.trim().isNotEmpty &&
       draft.addressText.trim().isNotEmpty;
 
-  bool get _hasImage => draft.images.isNotEmpty;
+  bool get _hasImage => draft.hasMedia;
 
   int get _completedItems {
     var count = 0;
@@ -440,7 +440,7 @@ class _RoomPreviewCard extends StatelessWidget {
             children: [
               AspectRatio(
                 aspectRatio: 16 / 9,
-                child: draft.images.isEmpty
+                child: !draft.hasMedia
                     ? Container(
                         color: const Color(0xFFE8F0EE),
                         alignment: Alignment.center,
@@ -463,13 +463,22 @@ class _RoomPreviewCard extends StatelessWidget {
                           ],
                         ),
                       )
-                    : Image.file(
+                    : draft.images.isNotEmpty
+                    ? Image.file(
                         File(draft.images.first.path),
                         fit: BoxFit.cover,
+                      )
+                    : Image.network(
+                        draft.existingImages.first.url,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const ColoredBox(
+                          color: Color(0xFFE8F0EE),
+                          child: Icon(Icons.broken_image_outlined),
+                        ),
                       ),
               ),
 
-              if (draft.images.isNotEmpty)
+              if (draft.hasMedia)
                 Positioned(
                   left: 12,
                   top: 12,
@@ -493,7 +502,7 @@ class _RoomPreviewCard extends StatelessWidget {
                   ),
                 ),
 
-              if (draft.images.length > 1)
+              if (draft.images.length + draft.existingImages.length > 1)
                 Positioned(
                   right: 12,
                   bottom: 12,
@@ -507,7 +516,7 @@ class _RoomPreviewCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      '1/${draft.images.length}',
+                      '1/${draft.images.length + draft.existingImages.length}',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 10.5,

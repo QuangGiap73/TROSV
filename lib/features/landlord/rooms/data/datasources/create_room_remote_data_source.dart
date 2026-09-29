@@ -116,11 +116,24 @@ class CreateRoomRemoteDataSource {
     );
   }
 
-  Future<void> addSpace(String roomId, Map<String, dynamic> payload) =>
-      _dio.post<Map<String, dynamic>>(
-        '/api/v1/landlord/rooms/$roomId/spaces',
-        data: payload,
+  Future<String> addSpace(String roomId, Map<String, dynamic> payload) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/landlord/rooms/$roomId/spaces',
+      data: payload,
+    );
+    final id = _mapData(response)['id'];
+    if (id is! String || id.isEmpty) {
+      throw const FormatException('Máy chủ không trả về mã không gian.');
+    }
+    return id;
+  }
+
+  Future<void> deleteSpace(String roomId, String spaceId) =>
+      _dio.delete<Map<String, dynamic>>(
+        '/api/v1/landlord/rooms/$roomId/spaces/$spaceId',
       );
+  Future<void> deleteMedia(String mediaId) =>
+      _dio.delete<Map<String, dynamic>>('/api/v1/media/$mediaId');
   Future<void> upsertCosts(String roomId, Map<String, dynamic> payload) =>
       _dio.put<Map<String, dynamic>>(
         '/api/v1/landlord/rooms/$roomId/costs',

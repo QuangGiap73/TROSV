@@ -133,13 +133,16 @@ class _PropertyStepState extends ConsumerState<PropertyStep> {
 
           const SizedBox(height: 20),
 
-          _PropertySelectorCard(
-            selectedValue: draft.propertyId ?? _newPropertyValue,
-            properties: widget.properties,
-            loading: widget.isLoadingProperties,
-            onChanged: widget.isLoadingProperties ? null : _onPropertyChanged,
-            onRetry: widget.onRetryProperties,
-          ),
+          if (draft.isEditing)
+            const _EditPropertyNotice()
+          else
+            _PropertySelectorCard(
+              selectedValue: draft.propertyId ?? _newPropertyValue,
+              properties: widget.properties,
+              loading: widget.isLoadingProperties,
+              onChanged: widget.isLoadingProperties ? null : _onPropertyChanged,
+              onRetry: widget.onRetryProperties,
+            ),
 
           const SizedBox(height: 18),
 
@@ -744,6 +747,40 @@ class _PropertySelectorCard extends StatelessWidget {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _EditPropertyNotice extends StatelessWidget {
+  const _EditPropertyNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF8E8),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFF0DEAE)),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.lock_outline_rounded, color: Color(0xFF9B7018)),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Phòng đang thuộc khu trọ này. Backend hiện chưa hỗ trợ đổi '
+              'khu trọ khi chỉnh sửa phòng.',
+              style: TextStyle(
+                fontSize: 12.5,
+                height: 1.4,
+                color: Color(0xFF795B1F),
+              ),
+            ),
+          ),
         ],
       ),
     );

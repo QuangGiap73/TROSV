@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../domain/entities/landlord_room.dart';
+import '../../domain/entities/landlord_room_detail.dart';
 import '../../domain/repositories/landlord_room_repository.dart';
 import '../datasources/landlord_room_remote_data_source.dart';
 
@@ -14,6 +15,11 @@ class LandlordRoomRepositoryImpl implements LandlordRoomRepository {
     return _execute(
       () => _remote.getRooms(status: status, propertyId: propertyId),
     );
+  }
+
+  @override
+  Future<LandlordRoomDetail> getRoomDetail(String roomId) {
+    return _execute(() => _remote.getRoomDetail(roomId));
   }
 
   @override

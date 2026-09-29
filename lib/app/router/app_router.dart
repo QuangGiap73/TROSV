@@ -3,12 +3,19 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/role_landing_screen.dart';
+import '../../features/appointments/presentation/screens/create_appointment_screen.dart';
+import '../../features/appointments/presentation/screens/appointment_detail_screen.dart';
+import '../../features/appointments/presentation/screens/tenant_appointments_screen.dart';
+import '../../features/appointments/domain/entities/appointment.dart';
 import '../../features/favorites/presentation/favorites_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/landlord/appointments/presentation/landlord_appointments_screen.dart';
+import '../../features/landlord/appointments/presentation/landlord_appointment_detail_screen.dart';
 import '../../features/landlord/dashboard/presentation/landlord_dashboard_screen.dart';
 import '../../features/landlord/profile/presentation/landlord_profile_screen.dart';
 import '../../features/landlord/rooms/presentation/screens/landlord_rooms_screen.dart';
+import '../../features/landlord/rooms/presentation/screens/landlord_room_detail_screen.dart';
+import '../../features/notifications/presentation/screens/notifications_screen.dart';
 import '../../features/preferences/presentation/screens/preference_screen.dart';
 import '../../features/profile/presentation/change_password_screen.dart';
 import '../../features/profile/presentation/edit_profile_screen.dart';
@@ -114,6 +121,75 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/landlord/rooms/create',
         builder: (_, _) => const LandlordCreateRoomScreen(),
+      ),
+
+      GoRoute(
+        path: '/landlord/rooms/:roomId/edit',
+        builder: (_, state) {
+          final roomId = state.pathParameters['roomId'];
+          if (roomId == null || roomId.isEmpty) {
+            throw StateError('Thiếu mã phòng.');
+          }
+          return LandlordCreateRoomScreen(roomId: roomId);
+        },
+      ),
+
+      GoRoute(
+        path: '/landlord/rooms/:roomId',
+        builder: (_, state) {
+          final roomId = state.pathParameters['roomId'];
+          if (roomId == null || roomId.isEmpty) {
+            throw StateError('Thiếu mã phòng.');
+          }
+          return LandlordRoomDetailScreen(roomId: roomId);
+        },
+      ),
+
+      GoRoute(
+        path: '/landlord/appointments/:appointmentId',
+        builder: (_, state) {
+          final appointment = state.extra;
+          if (appointment is! Appointment) {
+            throw StateError(
+              'Thiếu dữ liệu lịch hẹn. Hãy mở lịch từ danh sách.',
+            );
+          }
+          return LandlordAppointmentDetailScreen(appointment: appointment);
+        },
+      ),
+
+      GoRoute(
+        path: '/appointments/create',
+        builder: (_, state) {
+          final roomId = state.uri.queryParameters['roomId'];
+          if (roomId == null || roomId.isEmpty) {
+            throw StateError('Thiếu mã phòng.');
+          }
+          return CreateAppointmentScreen(
+            roomId: roomId,
+            roomTitle: state.uri.queryParameters['roomTitle'],
+          );
+        },
+      ),
+      GoRoute(
+        path: '/profile/appointments',
+        builder: (_, _) => const TenantAppointmentsScreen(),
+      ),
+      GoRoute(
+        path: '/profile/appointments/:appointmentId',
+        builder: (_, state) {
+          final appointment = state.extra;
+          if (appointment is! Appointment) {
+            throw StateError(
+              'Thiếu dữ liệu lịch hẹn. Hãy mở lịch từ danh sách.',
+            );
+          }
+          return AppointmentDetailScreen(appointment: appointment);
+        },
+      ),
+      GoRoute(
+        path: '/notifications',
+        builder: (_, _) => const NotificationsScreen(),
       ),
 
       GoRoute(

@@ -64,6 +64,69 @@ class _RoomMediaStepState extends State<RoomMediaStep> {
             style: TextStyle(color: Colors.grey),
           ),
           const SizedBox(height: 14),
+          if (draft.existingImages.isNotEmpty) ...[
+            const Text(
+              'Ảnh hiện tại',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: draft.existingImages.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 9,
+                crossAxisSpacing: 9,
+                childAspectRatio: 1.4,
+              ),
+              itemBuilder: (_, index) {
+                final media = draft.existingImages[index];
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        media.url,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const ColoredBox(
+                          color: Color(0xFFE8F0EE),
+                          child: Icon(Icons.broken_image_outlined),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      right: 5,
+                      top: 5,
+                      child: CircleAvatar(
+                        radius: 14,
+                        backgroundColor: Colors.black54,
+                        child: IconButton(
+                          padding: EdgeInsets.zero,
+                          iconSize: 15,
+                          color: Colors.white,
+                          onPressed: () =>
+                              setState(() => draft.removeExistingMedia(media)),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ),
+                    ),
+                    if (media.isPrimary)
+                      const Positioned(
+                        left: 7,
+                        bottom: 7,
+                        child: Chip(
+                          label: Text('Ảnh đại diện'),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+          ],
           if (draft.images.isNotEmpty)
             GridView.builder(
               shrinkWrap: true,
@@ -129,7 +192,9 @@ class _RoomMediaStepState extends State<RoomMediaStep> {
                   onPressed: widget.isSaving ? null : _pickVideo,
                   icon: const Icon(Icons.video_call_outlined),
                   label: Text(
-                    draft.videos.isEmpty ? 'Thêm video' : 'Đổi video',
+                    draft.videos.isEmpty && draft.existingVideos.isEmpty
+                        ? 'Thêm video'
+                        : 'Đổi video',
                   ),
                 ),
               ),

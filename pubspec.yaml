@@ -71,6 +71,7 @@ flutter:
     - assets/images/home/
     - assets/images/icon/
     - assets/data/
+    - assets/images/empty_favorites.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import '../../domain/entities/landlord_room.dart';
+import '../../domain/entities/landlord_room_detail.dart';
 
 class LandlordRoomRemoteDataSource {
   const LandlordRoomRemoteDataSource(this._dio);
@@ -26,6 +27,20 @@ class LandlordRoomRemoteDataSource {
         .whereType<Map<String, dynamic>>()
         .map(LandlordRoom.fromJson)
         .toList(growable: false);
+  }
+
+  Future<LandlordRoomDetail> getRoomDetail(String roomId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/landlord/rooms/$roomId',
+    );
+    final envelope = response.data;
+    final data = envelope?['data'];
+    if (envelope?['success'] != true || data is! Map<String, dynamic>) {
+      throw const FormatException(
+        'Chi tiết phòng từ máy chủ không đúng định dạng.',
+      );
+    }
+    return LandlordRoomDetail.fromJson(data);
   }
 
   Future<void> deleteRoom(String roomId) async {

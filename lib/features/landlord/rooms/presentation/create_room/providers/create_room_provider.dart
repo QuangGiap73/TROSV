@@ -58,6 +58,12 @@ class CreateRoomController extends AsyncNotifier<String?> {
   Future<bool> syncMediaAndSpaces(CreateRoomDraft draft) async {
     final result = await _execute(() async {
       final roomId = _requiredRoomId(draft);
+
+      for (final mediaId in draft.removedMediaIds.toList()) {
+        await _api.deleteMedia(mediaId);
+        draft.removedMediaIds.remove(mediaId);
+      }
+
       final files = <XFile>[...draft.images, ...draft.videos];
 
       for (var index = 0; index < files.length; index++) {
@@ -77,20 +83,31 @@ class CreateRoomController extends AsyncNotifier<String?> {
         await _api.confirmMedia(
           roomId: roomId,
           objectKey: presigned.objectKey,
-          isPrimary: index == 0,
-          sortOrder: index,
+          isPrimary: draft.existingImages.isEmpty && index == 0,
+          sortOrder: draft.existingMedia.length + index,
         );
         draft.confirmedMediaPaths.add(file.path);
       }
 
+      for (final spaceId in draft.removedSpaceIds.toList()) {
+        await _api.deleteSpace(roomId, spaceId);
+        draft.removedSpaceIds.remove(spaceId);
+      }
+
       for (final space in draft.spaces) {
         final key = draft.spaceKey(space);
+        if (space.id != null && key == space.originalKey) continue;
+        if (space.id != null) {
+          await _api.deleteSpace(roomId, space.id!);
+          space.id = null;
+        }
         if (draft.syncedSpaceKeys.contains(key)) continue;
-        await _api.addSpace(roomId, {
+        space.id = await _api.addSpace(roomId, {
           'space_type': space.type,
           'privacy_type': space.privacyType,
           'description': _nullIfEmpty(space.description),
         });
+        space.originalKey = key;
         draft.syncedSpaceKeys.add(key);
       }
       return true;
@@ -142,6 +159,7 @@ class CreateRoomController extends AsyncNotifier<String?> {
       if (submit) await _api.submitRoom(roomId);
 
       ref.invalidate(landlordRoomsProvider);
+      ref.invalidate(landlordRoomDetailProvider(roomId));
       return true;
     });
     return result ?? false;

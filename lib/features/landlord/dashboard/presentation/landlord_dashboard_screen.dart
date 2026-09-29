@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class LandlordDashboardScreen extends StatelessWidget {
   const LandlordDashboardScreen({super.key});
@@ -10,7 +11,7 @@ class LandlordDashboardScreen extends StatelessWidget {
         title: const Text('Quản lý TrọSV'),
         actions: [
           IconButton(
-            onPressed: () {},
+            onPressed: () => context.push('/notifications'),
             tooltip: 'Thông báo',
             icon: const Icon(Icons.notifications_outlined),
           ),

@@ -4,6 +4,7 @@ import '../../../../../core/network/dio_provider.dart';
 import '../../data/datasources/landlord_room_remote_data_source.dart';
 import '../../data/repositories/landlord_room_repository_impl.dart';
 import '../../domain/entities/landlord_room.dart';
+import '../../domain/entities/landlord_room_detail.dart';
 import '../../domain/repositories/landlord_room_repository.dart';
 
 final landlordRoomRemoteDataSourceProvider =
@@ -22,6 +23,11 @@ final landlordRoomsProvider = FutureProvider.family
       return ref.watch(landlordRoomRepositoryProvider).getRooms(status: status);
     });
 
+final landlordRoomDetailProvider = FutureProvider.autoDispose
+    .family<LandlordRoomDetail, String>((ref, roomId) {
+      return ref.watch(landlordRoomRepositoryProvider).getRoomDetail(roomId);
+    });
+
 final landlordRoomActionProvider =
     AsyncNotifierProvider<LandlordRoomActionController, void>(
       LandlordRoomActionController.new,
@@ -35,35 +41,39 @@ class LandlordRoomActionController extends AsyncNotifier<void> {
   Future<void> build() async {}
 
   Future<bool> deleteRoom(String roomId) {
-    return _run(() => _repository.deleteRoom(roomId));
+    return _run(roomId, () => _repository.deleteRoom(roomId));
   }
 
   Future<bool> updateVisibility(String roomId, {required bool visible}) {
-    return _run(() => _repository.updateVisibility(roomId, visible: visible));
+    return _run(
+      roomId,
+      () => _repository.updateVisibility(roomId, visible: visible),
+    );
   }
 
   Future<bool> submitRoom(String roomId) {
-    return _run(() => _repository.submitRoom(roomId));
+    return _run(roomId, () => _repository.submitRoom(roomId));
   }
 
   Future<bool> confirmAvailability(String roomId) {
-    return _run(() => _repository.confirmAvailability(roomId));
+    return _run(roomId, () => _repository.confirmAvailability(roomId));
   }
 
   Future<bool> markRented(String roomId) {
-    return _run(() => _repository.markRented(roomId));
+    return _run(roomId, () => _repository.markRented(roomId));
   }
 
   Future<bool> unmarkRented(String roomId) {
-    return _run(() => _repository.unmarkRented(roomId));
+    return _run(roomId, () => _repository.unmarkRented(roomId));
   }
 
-  Future<bool> _run(Future<void> Function() operation) async {
+  Future<bool> _run(String roomId, Future<void> Function() operation) async {
     state = const AsyncLoading();
     try {
       await operation();
       state = const AsyncData(null);
       ref.invalidate(landlordRoomsProvider);
+      ref.invalidate(landlordRoomDetailProvider(roomId));
       return true;
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);

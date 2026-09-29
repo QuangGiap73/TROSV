@@ -38,7 +38,7 @@ class CreateRoomStepLayout extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
         ),
         title: const Text(
-          'Đăng phòng trọ',
+          'Thông tin phòng trọ',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
         ),
         actions: [

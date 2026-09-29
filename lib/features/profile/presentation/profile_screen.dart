@@ -46,7 +46,8 @@ class ProfileScreen extends ConsumerWidget {
                           context.push('/profile/personal-info'),
                       onPreferences: () => context.push('/profile/preferences'),
                       onFavorites: () => context.go('/favorites'),
-                      onAppointments: () => _comingSoon(context, 'Lịch hẹn'),
+                      onAppointments: () =>
+                          context.push('/profile/appointments'),
                     ),
                   ),
                   const SizedBox(height: 18),
@@ -84,7 +85,7 @@ class ProfileScreen extends ConsumerWidget {
                     iconColor: const Color(0xFFE9608E),
                     title: 'Thông báo',
                     subtitle: 'Cài đặt và xem thông báo mới',
-                    onTap: () => _comingSoon(context, 'Thông báo'),
+                    onTap: () => context.push('/notifications'),
                   ),
                   const _SectionTitle(title: 'Tài khoản & bảo mật'),
                   _MenuItem(

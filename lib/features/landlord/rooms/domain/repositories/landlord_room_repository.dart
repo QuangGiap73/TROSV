@@ -1,7 +1,10 @@
 import '../entities/landlord_room.dart';
+import '../entities/landlord_room_detail.dart';
 
 abstract interface class LandlordRoomRepository {
   Future<List<LandlordRoom>> getRooms({String? status, String? propertyId});
+
+  Future<LandlordRoomDetail> getRoomDetail(String roomId);
 
   Future<void> deleteRoom(String roomId);
 
