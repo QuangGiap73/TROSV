@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../domain/entities/landlord_room.dart';
+import '../providers/landlord_room_action_provider.dart';
 import '../providers/landlord_room_provider.dart';
 import '../widgets/landlord_room_card.dart';
 import '../widgets/landlord_room_states.dart';
@@ -47,7 +48,7 @@ class _LandlordRoomsScreenState extends ConsumerState<LandlordRoomsScreen> {
   @override
   Widget build(BuildContext context) {
     final rooms = ref.watch(landlordRoomsProvider(_selectedStatus));
-    final actionState = ref.watch(landlordRoomActionProvider);
+    final actionBusy = ref.watch(landlordAnyRoomActionLoadingProvider);
 
     return Scaffold(
       backgroundColor: _background,
@@ -82,12 +83,12 @@ class _LandlordRoomsScreenState extends ConsumerState<LandlordRoomsScreen> {
         actions: [
           IconButton(
             tooltip: 'Tải lại',
-            onPressed: actionState.isLoading ? null : _refresh,
+            onPressed: actionBusy ? null : _refresh,
             icon: const Icon(Icons.refresh_rounded),
           ),
           const SizedBox(width: 6),
         ],
-        bottom: actionState.isLoading
+        bottom: actionBusy
             ? const PreferredSize(
                 preferredSize: Size.fromHeight(3),
                 child: LinearProgressIndicator(minHeight: 3, color: _green),
@@ -95,7 +96,7 @@ class _LandlordRoomsScreenState extends ConsumerState<LandlordRoomsScreen> {
             : null,
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: actionState.isLoading ? null : _openCreateRoom,
+        onPressed: actionBusy ? null : _openCreateRoom,
         backgroundColor: _green,
         foregroundColor: Colors.white,
         elevation: 3,
@@ -290,7 +291,11 @@ class _LandlordRoomsScreenState extends ConsumerState<LandlordRoomsScreen> {
 
     final message = success
         ? _successMessage(action)
-        : _errorText(ref.read(landlordRoomActionProvider).error);
+        : _errorText(ref.read(landlordRoomActionErrorProvider(room.id)));
+
+    if (!success) {
+      ref.read(landlordRoomActionProvider.notifier).clearError(room.id);
+    }
 
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()

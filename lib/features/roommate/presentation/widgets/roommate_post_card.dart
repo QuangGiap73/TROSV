@@ -28,9 +28,7 @@ class RoommatePostCard extends StatelessWidget {
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(15),
-            border: Border.all(
-              color: const Color(0xFFE1EAE7),
-            ),
+            border: Border.all(color: const Color(0xFFE1EAE7)),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -46,9 +44,7 @@ class RoommatePostCard extends StatelessWidget {
                         _PostTypeBadge(type: post.postType),
                         const Spacer(),
                         if (showStatus)
-                          RoommateStatusBadge(
-                            status: post.status,
-                          ),
+                          RoommateStatusBadge(status: post.status),
                       ],
                     ),
                     const SizedBox(height: 7),
@@ -85,8 +81,7 @@ class RoommatePostCard extends StatelessWidget {
                         Expanded(
                           child: _InfoLine(
                             icon: Icons.group_outlined,
-                            text:
-                                'Cần ${post.desiredRoommates} người',
+                            text: 'Cần ${post.desiredRoommates} người',
                           ),
                         ),
                         Expanded(
@@ -97,8 +92,7 @@ class RoommatePostCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    if (post.isRejected &&
-                        post.rejectionReason != null) ...[
+                    if (post.isRejected && post.rejectionReason != null) ...[
                       const SizedBox(height: 7),
                       Text(
                         'Lý do: ${post.rejectionReason}',
@@ -167,27 +161,19 @@ class _PostTypeBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasRoom = type == 'HAVE_ROOM_FIND_MATE' ||
-        type == 'HAVE_ROOM';
+    final hasRoom = type == 'HAVE_ROOM_FIND_MATE' || type == 'HAVE_ROOM';
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 8,
-        vertical: 4,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: hasRoom
-            ? const Color(0xFFE0F5EB)
-            : const Color(0xFFE3F4F7),
+        color: hasRoom ? const Color(0xFFE0F5EB) : const Color(0xFFE3F4F7),
         borderRadius: BorderRadius.circular(15),
       ),
       child: Text(
         hasRoom ? 'Đã có phòng' : 'Cùng tìm phòng',
         style: TextStyle(
           fontSize: 9,
-          color: hasRoom
-              ? const Color(0xFF008F72)
-              : const Color(0xFF17849A),
+          color: hasRoom ? const Color(0xFF008F72) : const Color(0xFF17849A),
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -196,10 +182,7 @@ class _PostTypeBadge extends StatelessWidget {
 }
 
 class _InfoLine extends StatelessWidget {
-  const _InfoLine({
-    required this.icon,
-    required this.text,
-  });
+  const _InfoLine({required this.icon, required this.text});
 
   final IconData icon;
   final String text;
@@ -208,21 +191,14 @@ class _InfoLine extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(
-          icon,
-          size: 14,
-          color: const Color(0xFF687571),
-        ),
+        Icon(icon, size: 14, color: const Color(0xFF687571)),
         const SizedBox(width: 4),
         Expanded(
           child: Text(
             text,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 10.5,
-              color: Color(0xFF687571),
-            ),
+            style: const TextStyle(fontSize: 10.5, color: Color(0xFF687571)),
           ),
         ),
       ],

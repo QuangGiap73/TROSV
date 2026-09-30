@@ -1,4 +1,5 @@
 import '../entities/roommate_post.dart';
+import '../entities/roommate_contact.dart';
 import '../models/create_roommate_post_request.dart';
 
 abstract interface class RoommateRepository {
@@ -15,9 +16,11 @@ abstract interface class RoommateRepository {
 
   Future<List<RoommatePost>> getMyPosts();
 
-  Future<RoommatePost> createPost(
-    CreateRoommatePostRequest request,
-  );
+  Future<RoommatePost> getPostDetail(String postId);
+
+  Future<RoommateContact> getContact(String postId);
+
+  Future<RoommatePost> createPost(CreateRoommatePostRequest request);
 }
 
 class RoommateFailure implements Exception {

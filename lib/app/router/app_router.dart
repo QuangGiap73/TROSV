@@ -15,6 +15,7 @@ import '../../features/landlord/dashboard/presentation/landlord_dashboard_screen
 import '../../features/landlord/profile/presentation/landlord_profile_screen.dart';
 import '../../features/landlord/rooms/presentation/screens/landlord_rooms_screen.dart';
 import '../../features/landlord/rooms/presentation/screens/landlord_room_detail_screen.dart';
+import '../../features/landlord/rooms/presentation/screens/landlord_room_overview_screen.dart';
 import '../../features/notifications/presentation/screens/notifications_screen.dart';
 import '../../features/preferences/presentation/screens/preference_screen.dart';
 import '../../features/profile/presentation/change_password_screen.dart';
@@ -28,6 +29,7 @@ import '../../features/rooms/presentation/screens/room_match_screen.dart';
 import '../../features/roommate/presentation/screens/roommate_posts_screen.dart';
 import '../../features/roommate/presentation/screens/create_roommate_post_screen.dart';
 import '../../features/roommate/presentation/screens/my_roommate_posts_screen.dart';
+import '../../features/roommate/presentation/screens/roommate_post_detail_screen.dart';
 import '../../features/search/presentation/search_screen.dart';
 import '../../features/landlord/rooms/presentation/create_room/landlord_create_room_screen.dart';
 import '../shell/app_shell.dart';
@@ -85,6 +87,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/roommate/mine',
         builder: (_, _) => const MyRoommatePostsScreen(),
+      ),
+      GoRoute(
+        path: '/roommate/posts/:postId',
+        builder: (_, state) {
+          final postId = state.pathParameters['postId'];
+          if (postId == null || postId.isEmpty) {
+            throw StateError('Thiếu mã bài đăng ở ghép.');
+          }
+          return RoommatePostDetailScreen(postId: postId);
+        },
       ),
       // Landlord shell
       StatefulShellRoute.indexedStack(
@@ -145,6 +157,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       GoRoute(
         path: '/landlord/rooms/:roomId',
+        builder: (_, state) {
+          final roomId = state.pathParameters['roomId'];
+          if (roomId == null || roomId.isEmpty) {
+            throw StateError('Thiếu mã phòng.');
+          }
+          return LandlordRoomOverviewScreen(roomId: roomId);
+        },
+      ),
+
+      GoRoute(
+        path: '/landlord/rooms/:roomId/detail',
         builder: (_, state) {
           final roomId = state.pathParameters['roomId'];
           if (roomId == null || roomId.isEmpty) {

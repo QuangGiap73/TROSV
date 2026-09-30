@@ -32,9 +32,7 @@ class RoommatePostsScreen extends ConsumerWidget {
       ),
       body: posts.when(
         loading: () {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
+          return const Center(child: CircularProgressIndicator());
         },
         error: (error, _) {
           return _ErrorState(
@@ -55,12 +53,7 @@ class RoommatePostsScreen extends ConsumerWidget {
               await ref.read(roommatePostsProvider.future);
             },
             child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(
-                16,
-                10,
-                16,
-                100,
-              ),
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 100),
               itemCount: items.length,
               separatorBuilder: (_, _) {
                 return const SizedBox(height: 10);
@@ -68,9 +61,8 @@ class RoommatePostsScreen extends ConsumerWidget {
               itemBuilder: (_, index) {
                 return RoommatePostCard(
                   post: items[index],
-                  onTap: () {
-                    // Sẽ nối trang chi tiết ở bước tiếp theo.
-                  },
+                  onTap: () =>
+                      context.push('/roommate/posts/${items[index].id}'),
                 );
               },
             ),
@@ -105,26 +97,17 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.groups_outlined,
-              size: 70,
-              color: Color(0xFF8EB1A8),
-            ),
+            Icon(Icons.groups_outlined, size: 70, color: Color(0xFF8EB1A8)),
             SizedBox(height: 14),
             Text(
               'Chưa có bài ở ghép',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
-              ),
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
             ),
             SizedBox(height: 6),
             Text(
               'Hãy là người đầu tiên đăng nhu cầu tìm người ở cùng.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Color(0xFF687571),
-              ),
+              style: TextStyle(color: Color(0xFF687571)),
             ),
           ],
         ),
@@ -134,10 +117,7 @@ class _EmptyState extends StatelessWidget {
 }
 
 class _ErrorState extends StatelessWidget {
-  const _ErrorState({
-    required this.message,
-    required this.onRetry,
-  });
+  const _ErrorState({required this.message, required this.onRetry});
 
   final String message;
   final VoidCallback onRetry;
@@ -156,10 +136,7 @@ class _ErrorState extends StatelessWidget {
               color: Color(0xFF8EB1A8),
             ),
             const SizedBox(height: 12),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-            ),
+            Text(message, textAlign: TextAlign.center),
             const SizedBox(height: 14),
             FilledButton.icon(
               onPressed: onRetry,

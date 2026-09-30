@@ -53,10 +53,8 @@ class RoommatePost {
       currentMembers: _int(json['current_members']),
       authorGender: _string(json['author_gender']),
       universityOrWork: _string(json['university_or_work']),
-      genderPreference:
-          _string(json['gender_preference']) ?? 'ANY',
-      contactPreference:
-          _string(json['contact_preference']) ?? 'BOTH',
+      genderPreference: _string(json['gender_preference']) ?? 'ANY',
+      contactPreference: _string(json['contact_preference']) ?? 'BOTH',
       lifestyleTags: _stringList(json['lifestyle_tags']),
       lifestyleTraits: _map(json['lifestyle_traits']),
       mediaUrls: _stringList(json['media_urls']),
@@ -70,10 +68,8 @@ class RoommatePost {
       isOwner: json['is_owner'] == true,
       contactLocked: json['contact_locked'] != false,
       rejectionReason: _string(json['rejection_reason']),
-      compatibilityScore:
-          _nullableInt(json['compatibility_score']),
-      compatibilityHighlights:
-          _stringList(json['compatibility_highlights']),
+      compatibilityScore: _nullableInt(json['compatibility_score']),
+      compatibilityHighlights: _stringList(json['compatibility_highlights']),
     );
   }
 
@@ -131,11 +127,7 @@ class RoommatePost {
 }
 
 class RoommateAuthor {
-  const RoommateAuthor({
-    required this.id,
-    required this.name,
-    this.avatarUrl,
-  });
+  const RoommateAuthor({required this.id, required this.name, this.avatarUrl});
 
   factory RoommateAuthor.fromJson(Map<String, dynamic> json) {
     return RoommateAuthor(
@@ -150,10 +142,7 @@ class RoommateAuthor {
   final String? avatarUrl;
 }
 
-String _requiredString(
-  Map<String, dynamic> json,
-  String key,
-) {
+String _requiredString(Map<String, dynamic> json, String key) {
   final value = _string(json[key]);
 
   if (value == null) {
@@ -186,10 +175,7 @@ int? _nullableInt(dynamic value) {
   return null;
 }
 
-DateTime _requiredDate(
-  Map<String, dynamic> json,
-  String key,
-) {
+DateTime _requiredDate(Map<String, dynamic> json, String key) {
   final value = json[key];
 
   if (value is String) {
@@ -203,10 +189,7 @@ DateTime _requiredDate(
   throw FormatException('Trường ngày $key không hợp lệ.');
 }
 
-Map<String, dynamic> _requiredMap(
-  Map<String, dynamic> json,
-  String key,
-) {
+Map<String, dynamic> _requiredMap(Map<String, dynamic> json, String key) {
   final value = json[key];
 
   if (value is Map<String, dynamic>) {

@@ -24,9 +24,7 @@ class MyRoommatePostsScreen extends ConsumerWidget {
       ),
       body: posts.when(
         loading: () {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
+          return const Center(child: CircularProgressIndicator());
         },
         error: (error, _) {
           return Center(
@@ -52,9 +50,7 @@ class MyRoommatePostsScreen extends ConsumerWidget {
             onRefresh: () async {
               ref.invalidate(myRoommatePostsProvider);
 
-              await ref.read(
-                myRoommatePostsProvider.future,
-              );
+              await ref.read(myRoommatePostsProvider.future);
             },
             child: ListView.separated(
               padding: const EdgeInsets.all(16),
@@ -63,10 +59,7 @@ class MyRoommatePostsScreen extends ConsumerWidget {
                 return const SizedBox(height: 10);
               },
               itemBuilder: (_, index) {
-                return RoommatePostCard(
-                  post: items[index],
-                  showStatus: true,
-                );
+                return RoommatePostCard(post: items[index], showStatus: true);
               },
             ),
           );
@@ -86,9 +79,7 @@ class MyRoommatePostsScreen extends ConsumerWidget {
 }
 
 class _MyPostsEmpty extends StatelessWidget {
-  const _MyPostsEmpty({
-    required this.onCreate,
-  });
+  const _MyPostsEmpty({required this.onCreate});
 
   final VoidCallback onCreate;
 
@@ -108,18 +99,13 @@ class _MyPostsEmpty extends StatelessWidget {
             const SizedBox(height: 16),
             const Text(
               'Bạn chưa đăng tin nào',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 7),
             const Text(
               'Đăng tin để tìm người ở ghép phù hợp với bạn.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Color(0xFF687571),
-              ),
+              style: TextStyle(color: Color(0xFF687571)),
             ),
             const SizedBox(height: 20),
             FilledButton.icon(

@@ -18,66 +18,20 @@ final landlordRoomRepositoryProvider = Provider<LandlordRoomRepository>((ref) {
   );
 });
 
+/// Danh sách phòng theo trạng thái.
+/// Giữ autoDispose vì màn danh sách có thể dùng nhiều bộ lọc khác nhau.
 final landlordRoomsProvider = FutureProvider.family
     .autoDispose<List<LandlordRoom>, String?>((ref, status) {
       return ref.watch(landlordRoomRepositoryProvider).getRooms(status: status);
     });
 
+/// Nguồn dữ liệu duy nhất cho cả:
+/// - màn Tổng quan phòng
+/// - màn Chi tiết 4 tab
+///
+/// Hai route cùng watch provider theo roomId nên Riverpod không cần tạo thêm
+/// một state model khác cho cùng một phòng.
 final landlordRoomDetailProvider = FutureProvider.autoDispose
     .family<LandlordRoomDetail, String>((ref, roomId) {
       return ref.watch(landlordRoomRepositoryProvider).getRoomDetail(roomId);
     });
-
-final landlordRoomActionProvider =
-    AsyncNotifierProvider<LandlordRoomActionController, void>(
-      LandlordRoomActionController.new,
-    );
-
-class LandlordRoomActionController extends AsyncNotifier<void> {
-  LandlordRoomRepository get _repository =>
-      ref.read(landlordRoomRepositoryProvider);
-
-  @override
-  Future<void> build() async {}
-
-  Future<bool> deleteRoom(String roomId) {
-    return _run(roomId, () => _repository.deleteRoom(roomId));
-  }
-
-  Future<bool> updateVisibility(String roomId, {required bool visible}) {
-    return _run(
-      roomId,
-      () => _repository.updateVisibility(roomId, visible: visible),
-    );
-  }
-
-  Future<bool> submitRoom(String roomId) {
-    return _run(roomId, () => _repository.submitRoom(roomId));
-  }
-
-  Future<bool> confirmAvailability(String roomId) {
-    return _run(roomId, () => _repository.confirmAvailability(roomId));
-  }
-
-  Future<bool> markRented(String roomId) {
-    return _run(roomId, () => _repository.markRented(roomId));
-  }
-
-  Future<bool> unmarkRented(String roomId) {
-    return _run(roomId, () => _repository.unmarkRented(roomId));
-  }
-
-  Future<bool> _run(String roomId, Future<void> Function() operation) async {
-    state = const AsyncLoading();
-    try {
-      await operation();
-      state = const AsyncData(null);
-      ref.invalidate(landlordRoomsProvider);
-      ref.invalidate(landlordRoomDetailProvider(roomId));
-      return true;
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-      return false;
-    }
-  }
-}

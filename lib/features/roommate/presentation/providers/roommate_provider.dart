@@ -4,20 +4,16 @@ import '../../../../core/network/dio_provider.dart';
 import '../../data/datasources/roommate_remote_data_source.dart';
 import '../../data/repositories/roommate_repository_impl.dart';
 import '../../domain/entities/roommate_post.dart';
+import '../../domain/entities/roommate_contact.dart';
 import '../../domain/models/create_roommate_post_request.dart';
 import '../../domain/repositories/roommate_repository.dart';
 
 final roommateRemoteDataSourceProvider = Provider(
-  (ref) => RoommateRemoteDataSource(
-    ref.watch(dioProvider),
-  ),
+  (ref) => RoommateRemoteDataSource(ref.watch(dioProvider)),
 );
 
-final roommateRepositoryProvider =
-    Provider<RoommateRepository>(
-  (ref) => RoommateRepositoryImpl(
-    ref.watch(roommateRemoteDataSourceProvider),
-  ),
+final roommateRepositoryProvider = Provider<RoommateRepository>(
+  (ref) => RoommateRepositoryImpl(ref.watch(roommateRemoteDataSourceProvider)),
 );
 
 class RoommateFilter {
@@ -50,19 +46,19 @@ class RoommateFilter {
 
   @override
   int get hashCode => Object.hash(
-        district,
-        minBudget,
-        maxBudget,
-        gender,
-        postType,
-        universityOrWork,
-      );
+    district,
+    minBudget,
+    maxBudget,
+    gender,
+    postType,
+    universityOrWork,
+  );
 }
 
 final roommateFilterProvider =
     NotifierProvider<RoommateFilterController, RoommateFilter>(
-  RoommateFilterController.new,
-);
+      RoommateFilterController.new,
+    );
 
 class RoommateFilterController extends Notifier<RoommateFilter> {
   @override
@@ -79,38 +75,45 @@ class RoommateFilterController extends Notifier<RoommateFilter> {
   }
 }
 
-final roommatePostsProvider =
-    FutureProvider.autoDispose<List<RoommatePost>>(
-  (ref) {
-    final filter = ref.watch(roommateFilterProvider);
+final roommatePostsProvider = FutureProvider.autoDispose<List<RoommatePost>>((
+  ref,
+) {
+  final filter = ref.watch(roommateFilterProvider);
 
-    return ref.watch(roommateRepositoryProvider).getPosts(
-          district: filter.district,
-          minBudget: filter.minBudget,
-          maxBudget: filter.maxBudget,
-          gender: filter.gender,
-          postType: filter.postType,
-          universityOrWork: filter.universityOrWork,
-        );
-  },
-);
+  return ref
+      .watch(roommateRepositoryProvider)
+      .getPosts(
+        district: filter.district,
+        minBudget: filter.minBudget,
+        maxBudget: filter.maxBudget,
+        gender: filter.gender,
+        postType: filter.postType,
+        universityOrWork: filter.universityOrWork,
+      );
+});
 
-final myRoommatePostsProvider =
-    FutureProvider.autoDispose<List<RoommatePost>>(
-  (ref) {
-    return ref
-        .watch(roommateRepositoryProvider)
-        .getMyPosts();
-  },
-);
+final myRoommatePostsProvider = FutureProvider.autoDispose<List<RoommatePost>>((
+  ref,
+) {
+  return ref.watch(roommateRepositoryProvider).getMyPosts();
+});
+
+final roommatePostDetailProvider = FutureProvider.autoDispose
+    .family<RoommatePost, String>((ref, postId) {
+      return ref.watch(roommateRepositoryProvider).getPostDetail(postId);
+    });
+
+final roommateContactProvider = FutureProvider.autoDispose
+    .family<RoommateContact, String>((ref, postId) {
+      return ref.watch(roommateRepositoryProvider).getContact(postId);
+    });
 
 final roommatePostActionProvider =
     AsyncNotifierProvider<RoommatePostActionController, void>(
-  RoommatePostActionController.new,
-);
+      RoommatePostActionController.new,
+    );
 
-class RoommatePostActionController
-    extends AsyncNotifier<void> {
+class RoommatePostActionController extends AsyncNotifier<void> {
   RoommateRepository get _repository {
     return ref.read(roommateRepositoryProvider);
   }
@@ -118,9 +121,7 @@ class RoommatePostActionController
   @override
   Future<void> build() async {}
 
-  Future<RoommatePost?> createPost(
-    CreateRoommatePostRequest request,
-  ) async {
+  Future<RoommatePost?> createPost(CreateRoommatePostRequest request) async {
     if (state.isLoading) return null;
 
     state = const AsyncLoading();

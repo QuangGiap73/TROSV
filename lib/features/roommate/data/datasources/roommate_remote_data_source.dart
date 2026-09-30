@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../domain/entities/roommate_post.dart';
+import '../../domain/entities/roommate_contact.dart';
 
 class RoommateRemoteDataSource {
   const RoommateRemoteDataSource(this._dio);
@@ -41,6 +42,20 @@ class RoommateRemoteDataSource {
     );
 
     return _readList(response);
+  }
+
+  Future<RoommatePost> getPostDetail(String postId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/roommate-posts/$postId',
+    );
+    return RoommatePost.fromJson(_readMap(response));
+  }
+
+  Future<RoommateContact> getContact(String postId) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/roommate-posts/$postId/contact',
+    );
+    return RoommateContact.fromJson(_readMap(response));
   }
 
   Future<RoommatePost> createPost(Map<String, dynamic> payload) async {

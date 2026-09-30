@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../domain/entities/roommate_post.dart';
+import '../../domain/entities/roommate_contact.dart';
 import '../../domain/models/create_roommate_post_request.dart';
 import '../../domain/repositories/roommate_repository.dart';
 import '../datasources/roommate_remote_data_source.dart';
@@ -41,17 +42,21 @@ class RoommateRepositoryImpl implements RoommateRepository {
   }
 
   @override
-  Future<RoommatePost> createPost(
-    CreateRoommatePostRequest request,
-  ) {
-    return _execute(
-      () => _remote.createPost(request.toJson()),
-    );
+  Future<RoommatePost> getPostDetail(String postId) {
+    return _execute(() => _remote.getPostDetail(postId));
   }
 
-  Future<T> _execute<T>(
-    Future<T> Function() operation,
-  ) async {
+  @override
+  Future<RoommateContact> getContact(String postId) {
+    return _execute(() => _remote.getContact(postId));
+  }
+
+  @override
+  Future<RoommatePost> createPost(CreateRoommatePostRequest request) {
+    return _execute(() => _remote.createPost(request.toJson()));
+  }
+
+  Future<T> _execute<T>(Future<T> Function() operation) async {
     try {
       return await operation();
     } on DioException catch (error) {
@@ -72,8 +77,7 @@ String _dioMessage(DioException error) {
   if (body is Map<String, dynamic>) {
     final apiError = body['error'];
 
-    if (apiError is Map<String, dynamic> &&
-        apiError['message'] is String) {
+    if (apiError is Map<String, dynamic> && apiError['message'] is String) {
       return apiError['message'] as String;
     }
 
