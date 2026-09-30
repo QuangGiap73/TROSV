@@ -25,7 +25,9 @@ import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/rooms/presentation/screens/room_detail_screen.dart';
 import '../../features/rooms/presentation/screens/room_map_screen.dart';
 import '../../features/rooms/presentation/screens/room_match_screen.dart';
-import '../../features/rooms/presentation/screens/roommate_screen.dart';
+import '../../features/roommate/presentation/screens/roommate_posts_screen.dart';
+import '../../features/roommate/presentation/screens/create_roommate_post_screen.dart';
+import '../../features/roommate/presentation/screens/my_roommate_posts_screen.dart';
 import '../../features/search/presentation/search_screen.dart';
 import '../../features/landlord/rooms/presentation/create_room/landlord_create_room_screen.dart';
 import '../shell/app_shell.dart';
@@ -54,7 +56,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/roommate',
-                builder: (_, _) => const RoommateScreen(),
+                builder: (_, _) => const RoommatePostsScreen(),
               ),
             ],
           ),
@@ -76,7 +78,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
-
+      GoRoute(
+        path: '/roommate/create',
+        builder: (_, _) => const CreateRoommatePostScreen(),
+      ),
+      GoRoute(
+        path: '/roommate/mine',
+        builder: (_, _) => const MyRoommatePostsScreen(),
+      ),
       // Landlord shell
       StatefulShellRoute.indexedStack(
         builder: (_, _, navigationShell) =>
