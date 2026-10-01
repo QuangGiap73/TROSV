@@ -8,32 +8,18 @@ class AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentPath = GoRouterState.of(context).uri.path;
-
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: _BottomTabBar(
-        selectedIndex: _tabIndexFromPath(currentPath),
+        selectedIndex: navigationShell.currentIndex,
         onSelected: (index) {
-          const routes = [
-            '/',
-            '/search',
-            '/roommate',
-            '/favorites',
-            '/profile',
-          ];
-          context.go(routes[index]);
+          navigationShell.goBranch(
+            index,
+            initialLocation: index == navigationShell.currentIndex,
+          );
         },
       ),
     );
-  }
-
-  int _tabIndexFromPath(String path) {
-    if (path == '/profile' || path.startsWith('/profile/')) return 4;
-    if (path == '/favorites' || path.startsWith('/favorites/')) return 3;
-    if (path == '/roommate' || path.startsWith('/roommate/')) return 2;
-    if (path == '/search' || path.startsWith('/search/')) return 1;
-    return 0;
   }
 }
 

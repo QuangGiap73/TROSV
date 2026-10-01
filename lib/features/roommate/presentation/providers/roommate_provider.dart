@@ -33,6 +33,14 @@ class RoommateFilter {
   final String? postType;
   final String? universityOrWork;
 
+  bool get isEmpty =>
+      district == null &&
+      minBudget == null &&
+      maxBudget == null &&
+      gender == null &&
+      postType == null &&
+      universityOrWork == null;
+
   @override
   bool operator ==(Object other) {
     return other is RoommateFilter &&

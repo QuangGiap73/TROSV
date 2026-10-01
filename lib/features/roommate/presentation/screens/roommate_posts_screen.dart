@@ -28,6 +28,13 @@ class _RoommatePostsScreenState extends ConsumerState<RoommatePostsScreen> {
   Timer? _searchDebounce;
 
   @override
+  void initState() {
+    super.initState();
+    _searchController.text =
+        ref.read(roommateFilterProvider).universityOrWork ?? '';
+  }
+
+  @override
   void dispose() {
     _searchDebounce?.cancel();
     _searchController.dispose();
@@ -89,9 +96,12 @@ class _RoommatePostsScreenState extends ConsumerState<RoommatePostsScreen> {
                 ),
                 data: (items) {
                   if (items.isEmpty) {
-                    return const SliverFillRemaining(
+                    return SliverFillRemaining(
                       hasScrollBody: false,
-                      child: _EmptyState(),
+                      child: _EmptyState(
+                        filtered: !filter.isEmpty,
+                        onClearFilters: _clearFilters,
+                      ),
                     );
                   }
 
@@ -178,6 +188,13 @@ class _RoommatePostsScreenState extends ConsumerState<RoommatePostsScreen> {
             universityOrWork: current.universityOrWork,
           ),
         );
+  }
+
+  void _clearFilters() {
+    _searchDebounce?.cancel();
+    _searchController.clear();
+    FocusManager.instance.primaryFocus?.unfocus();
+    ref.read(roommateFilterProvider.notifier).clear();
   }
 
   Future<void> _refresh() async {
@@ -467,6 +484,8 @@ class _HeroHeader extends StatelessWidget {
       filter.minBudget,
       filter.maxBudget,
       filter.gender,
+      filter.postType,
+      filter.universityOrWork,
     ].where((value) => value != null).length;
 
     return Column(
@@ -893,32 +912,49 @@ class _FilterChoice extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  const _EmptyState({required this.filtered, required this.onClearFilters});
+
+  final bool filtered;
+  final VoidCallback onClearFilters;
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(32),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.groups_outlined, size: 66, color: Color(0xFF8EB1A8)),
-            SizedBox(height: 14),
+            const Icon(
+              Icons.groups_outlined,
+              size: 66,
+              color: Color(0xFF8EB1A8),
+            ),
+            const SizedBox(height: 14),
             Text(
-              'Chưa có bài ở ghép',
-              style: TextStyle(
+              filtered ? 'Không có bài phù hợp bộ lọc' : 'Chưa có bài ở ghép',
+              style: const TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w900,
                 color: _text,
               ),
             ),
-            SizedBox(height: 6),
+            const SizedBox(height: 6),
             Text(
-              'Hãy thử đổi bộ lọc hoặc đăng nhu cầu tìm người ở cùng.',
+              filtered
+                  ? 'Bài đăng vẫn còn, hãy xóa bộ lọc để xem toàn bộ.'
+                  : 'Hãy đăng nhu cầu để tìm người ở cùng.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, height: 1.45, color: _muted),
+              style: const TextStyle(fontSize: 12, height: 1.45, color: _muted),
             ),
+            if (filtered) ...[
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: onClearFilters,
+                icon: const Icon(Icons.filter_alt_off_outlined, size: 19),
+                label: const Text('Xóa toàn bộ bộ lọc'),
+              ),
+            ],
           ],
         ),
       ),
