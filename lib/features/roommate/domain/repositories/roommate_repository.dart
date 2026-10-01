@@ -21,6 +21,16 @@ abstract interface class RoommateRepository {
   Future<RoommateContact> getContact(String postId);
 
   Future<RoommatePost> createPost(CreateRoommatePostRequest request);
+
+  Future<RoommatePost> updateMemberCounts({
+    required String postId,
+    required int currentMembers,
+    required int desiredRoommates,
+  });
+
+  Future<RoommatePost> closePost(String postId);
+
+  Future<void> deletePost(String postId);
 }
 
 class RoommateFailure implements Exception {

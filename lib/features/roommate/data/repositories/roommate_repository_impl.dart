@@ -56,6 +56,30 @@ class RoommateRepositoryImpl implements RoommateRepository {
     return _execute(() => _remote.createPost(request.toJson()));
   }
 
+  @override
+  Future<RoommatePost> updateMemberCounts({
+    required String postId,
+    required int currentMembers,
+    required int desiredRoommates,
+  }) {
+    return _execute(
+      () => _remote.updatePost(postId, {
+        'current_members': currentMembers,
+        'desired_roommates': desiredRoommates,
+      }),
+    );
+  }
+
+  @override
+  Future<RoommatePost> closePost(String postId) {
+    return _execute(() => _remote.closePost(postId));
+  }
+
+  @override
+  Future<void> deletePost(String postId) {
+    return _execute(() => _remote.deletePost(postId));
+  }
+
   Future<T> _execute<T>(Future<T> Function() operation) async {
     try {
       return await operation();

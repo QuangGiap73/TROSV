@@ -98,6 +98,38 @@ final myRoommatePostsProvider = FutureProvider.autoDispose<List<RoommatePost>>((
   return ref.watch(roommateRepositoryProvider).getMyPosts();
 });
 
+enum MyRoommatePostFilter { all, pending, active, rejected, closed }
+
+final myRoommatePostFilterProvider =
+    NotifierProvider<MyRoommatePostFilterController, MyRoommatePostFilter>(
+      MyRoommatePostFilterController.new,
+    );
+
+class MyRoommatePostFilterController extends Notifier<MyRoommatePostFilter> {
+  @override
+  MyRoommatePostFilter build() => MyRoommatePostFilter.all;
+
+  void select(MyRoommatePostFilter value) => state = value;
+}
+
+final filteredMyRoommatePostsProvider =
+    Provider<AsyncValue<List<RoommatePost>>>((ref) {
+      final filter = ref.watch(myRoommatePostFilterProvider);
+      return ref.watch(myRoommatePostsProvider).whenData((posts) {
+        return posts
+            .where((post) {
+              return switch (filter) {
+                MyRoommatePostFilter.all => true,
+                MyRoommatePostFilter.pending => post.status == 'PENDING_REVIEW',
+                MyRoommatePostFilter.active => post.status == 'ACTIVE',
+                MyRoommatePostFilter.rejected => post.status == 'REJECTED',
+                MyRoommatePostFilter.closed => post.status == 'CLOSED',
+              };
+            })
+            .toList(growable: false);
+      });
+    });
+
 final roommatePostDetailProvider = FutureProvider.autoDispose
     .family<RoommatePost, String>((ref, postId) {
       return ref.watch(roommateRepositoryProvider).getPostDetail(postId);
@@ -138,6 +170,45 @@ class RoommatePostActionController extends AsyncNotifier<void> {
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
       return null;
+    }
+  }
+
+  Future<bool> updateMemberCounts({
+    required String postId,
+    required int currentMembers,
+    required int desiredRoommates,
+  }) {
+    return _run(
+      postId,
+      () => _repository.updateMemberCounts(
+        postId: postId,
+        currentMembers: currentMembers,
+        desiredRoommates: desiredRoommates,
+      ),
+    );
+  }
+
+  Future<bool> closePost(String postId) {
+    return _run(postId, () => _repository.closePost(postId));
+  }
+
+  Future<bool> deletePost(String postId) {
+    return _run(postId, () => _repository.deletePost(postId));
+  }
+
+  Future<bool> _run(String postId, Future<Object?> Function() action) async {
+    if (state.isLoading) return false;
+    state = const AsyncLoading();
+    try {
+      await action();
+      state = const AsyncData(null);
+      ref.invalidate(roommatePostsProvider);
+      ref.invalidate(myRoommatePostsProvider);
+      ref.invalidate(roommatePostDetailProvider(postId));
+      return true;
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      return false;
     }
   }
 }

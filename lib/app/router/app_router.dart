@@ -26,10 +26,12 @@ import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/rooms/presentation/screens/room_detail_screen.dart';
 import '../../features/rooms/presentation/screens/room_map_screen.dart';
 import '../../features/rooms/presentation/screens/room_match_screen.dart';
+import '../../features/rooms/domain/entities/room_search_query.dart';
 import '../../features/roommate/presentation/screens/roommate_posts_screen.dart';
 import '../../features/roommate/presentation/screens/create_roommate_post_screen.dart';
 import '../../features/roommate/presentation/screens/my_roommate_posts_screen.dart';
 import '../../features/roommate/presentation/screens/roommate_post_detail_screen.dart';
+import '../../features/roommate/presentation/screens/roommate_create_success_screen.dart';
 import '../../features/search/presentation/search_screen.dart';
 import '../../features/landlord/rooms/presentation/create_room/landlord_create_room_screen.dart';
 import '../shell/app_shell.dart';
@@ -51,7 +53,28 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           StatefulShellBranch(
             routes: [
-              GoRoute(path: '/search', builder: (_, _) => const SearchScreen()),
+              GoRoute(
+                path: '/search',
+                builder: (_, state) {
+                  final query = state.uri.queryParameters;
+                  final latitude = double.tryParse(query['lat'] ?? '');
+                  final longitude = double.tryParse(query['lng'] ?? '');
+                  final radius = int.tryParse(query['radius'] ?? '');
+                  return SearchScreen(
+                    title: query['title'] ?? 'Tìm trọ',
+                    initialQuery: RoomSearchQuery(
+                      latitude: latitude,
+                      longitude: longitude,
+                      radiusMeters: radius,
+                      sort: latitude != null && longitude != null
+                          ? 'DISTANCE'
+                          : 'RELEVANCE',
+                      page: 1,
+                      limit: latitude != null && longitude != null ? 20 : 50,
+                    ),
+                  );
+                },
+              ),
             ],
           ),
           StatefulShellBranch(
@@ -83,6 +106,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/roommate/create',
         builder: (_, _) => const CreateRoommatePostScreen(),
+      ),
+      GoRoute(
+        path: '/roommate/create/success',
+        builder: (_, _) => const RoommateCreateSuccessScreen(),
       ),
       GoRoute(
         path: '/roommate/mine',

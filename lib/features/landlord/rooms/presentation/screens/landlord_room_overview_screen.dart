@@ -7,8 +7,8 @@ import '../providers/landlord_room_action_provider.dart';
 import '../providers/landlord_room_provider.dart';
 import '../widgets/detail/landlord_room_action_menu.dart';
 import '../widgets/detail/landlord_room_amenity_grid.dart';
-import '../widgets/detail/landlord_room_media_gallery.dart';
 import '../widgets/detail/landlord_room_ui.dart';
+import '../../../../rooms/presentation/widgets/detail/shared_room_detail_content.dart';
 
 class LandlordRoomOverviewScreen extends ConsumerWidget {
   const LandlordRoomOverviewScreen({required this.roomId, super.key});
@@ -67,62 +67,10 @@ class LandlordRoomOverviewScreen extends ConsumerWidget {
           message: roomErrorText(error),
           onRetry: () => _refresh(ref),
         ),
-        data: (room) {
-          return RefreshIndicator(
-            color: roomGreen,
-            onRefresh: () => _refresh(ref),
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(14, 8, 14, 110),
-              children: [
-                LandlordRoomMediaGallery(room: room),
-                const SizedBox(height: 16),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        room.title,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          height: 1.2,
-                          fontWeight: FontWeight.w900,
-                          color: roomText,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    LandlordRoomStatusBadge(status: room.status),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '${roomMoney(room.priceMonthly)} đ/tháng',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: roomGreenDark,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                _QuickFacts(room: room),
-                if (room.fullAddress.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  _LocationCard(address: room.fullAddress),
-                ],
-                if (room.status == 'REJECTED' &&
-                    room.rejectionReason?.trim().isNotEmpty == true) ...[
-                  const SizedBox(height: 12),
-                  _RejectedCard(reason: room.rejectionReason!),
-                ],
-                if (room.amenities.isNotEmpty) ...[
-                  const SizedBox(height: 14),
-                  _AmenitiesPreview(room: room),
-                ],
-              ],
-            ),
-          );
-        },
+        data: (room) => SharedRoomDetailContent(
+          room: _landlordViewData(room),
+          onRefresh: () => _refresh(ref),
+        ),
       ),
       bottomNavigationBar: detail.maybeWhen(
         data: (room) => SafeArea(
@@ -210,6 +158,44 @@ class LandlordRoomOverviewScreen extends ConsumerWidget {
   }
 }
 
+SharedRoomDetailData _landlordViewData(LandlordRoomDetail room) {
+  final cost = room.cost;
+  return SharedRoomDetailData(
+    title: room.title,
+    status: room.status,
+    priceMonthly: room.priceMonthly,
+    depositAmount: room.depositAmount,
+    areaM2: room.areaM2,
+    maxPeople: room.maxPeople,
+    floor: room.floor,
+    address: room.fullAddress,
+    imageUrls: room.images
+        .map((item) => item.displayUrl)
+        .whereType<String>()
+        .toList(growable: false),
+    amenities: room.amenities.map((item) => item.name).toList(growable: false),
+    description: room.description,
+    houseRules: room.houseRules,
+    availableDate: room.availableDate,
+    lastConfirmedAt: room.lastConfirmedAt,
+    viewsCount: room.viewsCount,
+    rejectionReason: room.status == 'REJECTED' ? room.rejectionReason : null,
+    costs: {
+      if (cost != null) ...{
+        'Tiền điện': cost.electricityPrice,
+        'Tiền nước': cost.waterPrice,
+        'Internet': cost.internetFee,
+        'Gửi xe': cost.parkingFee,
+        'Phí dịch vụ': cost.serviceFee,
+        'Phí vệ sinh': cost.cleaningFee,
+        'Phí khác': cost.otherFee,
+      },
+    },
+  );
+}
+
+// TODO: Xóa nhóm widget tổng quan cũ sau khi ổn định giao diện dùng chung.
+// ignore: unused_element
 class _QuickFacts extends StatelessWidget {
   const _QuickFacts({required this.room});
 
@@ -288,6 +274,7 @@ class _VerticalDivider extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _LocationCard extends StatelessWidget {
   const _LocationCard({required this.address});
 
@@ -341,6 +328,7 @@ class _LocationCard extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _RejectedCard extends StatelessWidget {
   const _RejectedCard({required this.reason});
 
@@ -377,6 +365,7 @@ class _RejectedCard extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _AmenitiesPreview extends StatelessWidget {
   const _AmenitiesPreview({required this.room});
 

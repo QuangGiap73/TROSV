@@ -66,6 +66,28 @@ class RoommateRemoteDataSource {
 
     return RoommatePost.fromJson(_readMap(response));
   }
+
+  Future<RoommatePost> updatePost(
+    String postId,
+    Map<String, dynamic> payload,
+  ) async {
+    final response = await _dio.patch<Map<String, dynamic>>(
+      '/api/v1/roommate-posts/$postId',
+      data: payload,
+    );
+    return RoommatePost.fromJson(_readMap(response));
+  }
+
+  Future<RoommatePost> closePost(String postId) async {
+    final response = await _dio.patch<Map<String, dynamic>>(
+      '/api/v1/roommate-posts/$postId/close',
+    );
+    return RoommatePost.fromJson(_readMap(response));
+  }
+
+  Future<void> deletePost(String postId) async {
+    await _dio.delete<Map<String, dynamic>>('/api/v1/roommate-posts/$postId');
+  }
 }
 
 List<RoommatePost> _readList(Response<Map<String, dynamic>> response) {

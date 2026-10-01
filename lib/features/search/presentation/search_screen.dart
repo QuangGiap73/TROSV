@@ -17,7 +17,14 @@ import 'widgets/search_result_card.dart';
 enum _SearchMode { all, recommended, newest }
 
 class SearchScreen extends ConsumerStatefulWidget {
-  const SearchScreen({super.key});
+  const SearchScreen({
+    this.initialQuery = const RoomSearchQuery(),
+    this.title = 'Tìm trọ',
+    super.key,
+  });
+
+  final RoomSearchQuery initialQuery;
+  final String title;
 
   @override
   ConsumerState<SearchScreen> createState() => _SearchScreenState();
@@ -26,8 +33,25 @@ class SearchScreen extends ConsumerStatefulWidget {
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _searchController = TextEditingController();
   Timer? _debounce;
-  RoomSearchQuery _query = const RoomSearchQuery();
+  late RoomSearchQuery _query;
   _SearchMode _mode = _SearchMode.all;
+
+  @override
+  void initState() {
+    super.initState();
+    _query = widget.initialQuery;
+  }
+
+  @override
+  void didUpdateWidget(covariant SearchScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialQuery != widget.initialQuery) {
+      _debounce?.cancel();
+      _searchController.clear();
+      _query = widget.initialQuery;
+      _mode = _SearchMode.all;
+    }
+  }
 
   @override
   void dispose() {
@@ -74,9 +98,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAF9),
       appBar: AppBar(
-        title: const Text(
-          'Tìm trọ',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+        title: Text(
+          widget.title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
         ),
         centerTitle: false,
         backgroundColor: const Color(0xFFF8FAF9),

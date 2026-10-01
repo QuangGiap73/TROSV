@@ -9,12 +9,14 @@ class RoommatePostCard extends StatelessWidget {
     required this.post,
     this.showStatus = false,
     this.onTap,
+    this.trailing,
     super.key,
   });
 
   final RoommatePost post;
   final bool showStatus;
   final VoidCallback? onTap;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +47,7 @@ class RoommatePostCard extends StatelessWidget {
                         const Spacer(),
                         if (showStatus)
                           RoommateStatusBadge(status: post.status),
+                        trailing ?? const SizedBox.shrink(),
                       ],
                     ),
                     const SizedBox(height: 7),

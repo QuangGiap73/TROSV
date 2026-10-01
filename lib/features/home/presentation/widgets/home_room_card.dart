@@ -185,9 +185,15 @@ class _RoomImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (url == null || url!.trim().isEmpty) return const _ImageFallback();
+    final cacheWidth = (205 * MediaQuery.devicePixelRatioOf(context))
+        .round()
+        .clamp(410, 820);
     return Image.network(
       url!,
       fit: BoxFit.cover,
+      cacheWidth: cacheWidth,
+      filterQuality: FilterQuality.low,
+      gaplessPlayback: true,
       errorBuilder: (_, _, _) => const _ImageFallback(),
     );
   }

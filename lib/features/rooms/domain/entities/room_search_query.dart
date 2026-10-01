@@ -10,6 +10,9 @@ class RoomSearchQuery {
     this.amenityCodes = const [],
     this.bathroomPrivate,
     this.hasBalcony,
+    this.latitude,
+    this.longitude,
+    this.radiusMeters,
     this.sort = 'RELEVANCE',
     this.page = 1,
     this.limit = 50,
@@ -25,6 +28,9 @@ class RoomSearchQuery {
   final List<String> amenityCodes;
   final bool? bathroomPrivate;
   final bool? hasBalcony;
+  final double? latitude;
+  final double? longitude;
+  final int? radiusMeters;
   final String sort;
   final int page;
   final int limit;
@@ -47,6 +53,10 @@ class RoomSearchQuery {
     bool clearBathroomPrivate = false,
     bool? hasBalcony,
     bool clearHasBalcony = false,
+    double? latitude,
+    double? longitude,
+    int? radiusMeters,
+    bool clearLocation = false,
     String? sort,
     int? page,
     int? limit,
@@ -64,6 +74,9 @@ class RoomSearchQuery {
           ? null
           : bathroomPrivate ?? this.bathroomPrivate,
       hasBalcony: clearHasBalcony ? null : hasBalcony ?? this.hasBalcony,
+      latitude: clearLocation ? null : latitude ?? this.latitude,
+      longitude: clearLocation ? null : longitude ?? this.longitude,
+      radiusMeters: clearLocation ? null : radiusMeters ?? this.radiusMeters,
       sort: sort ?? this.sort,
       page: page ?? this.page,
       limit: limit ?? this.limit,
@@ -84,6 +97,9 @@ class RoomSearchQuery {
     if (amenityCodes.isNotEmpty) 'amenities': amenityCodes.join(','),
     if (bathroomPrivate != null) 'bathroom_private': bathroomPrivate,
     if (hasBalcony != null) 'has_balcony': hasBalcony,
+    if (latitude != null) 'lat': latitude,
+    if (longitude != null) 'lng': longitude,
+    if (radiusMeters != null) 'radius': radiusMeters,
   };
 
   @override
@@ -99,6 +115,9 @@ class RoomSearchQuery {
         _sameList(other.amenityCodes, amenityCodes) &&
         other.bathroomPrivate == bathroomPrivate &&
         other.hasBalcony == hasBalcony &&
+        other.latitude == latitude &&
+        other.longitude == longitude &&
+        other.radiusMeters == radiusMeters &&
         other.sort == sort &&
         other.page == page &&
         other.limit == limit;
@@ -116,6 +135,9 @@ class RoomSearchQuery {
     Object.hashAll(amenityCodes),
     bathroomPrivate,
     hasBalcony,
+    latitude,
+    longitude,
+    radiusMeters,
     sort,
     page,
     limit,

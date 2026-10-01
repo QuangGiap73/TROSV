@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../domain/entities/room_detail.dart';
 import '../providers/room_providers.dart';
+import '../widgets/detail/shared_room_detail_content.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
 class RoomDetailScreen extends ConsumerWidget {
@@ -14,30 +15,42 @@ class RoomDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final room = ref.watch(roomDetailProvider(roomId));
-    return Scaffold(
-      appBar: AppBar(title: const Text('Chi tiết phòng')),
-      body: room.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => _DetailError(
-          onRetry: () => ref.invalidate(roomDetailProvider(roomId)),
+    return DefaultTabController(
+      length: 4,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Chi tiết phòng'),
+          bottom: const SharedRoomDetailTabBar(),
         ),
-        data: (data) => _RoomDetailBody(room: data),
-      ),
-      bottomNavigationBar: room.hasValue
-          ? SafeArea(
-              minimum: const EdgeInsets.all(16),
-              child: FilledButton.icon(
-                onPressed: room.asData?.value.status == 'PUBLISHED'
-                    ? () => _openBooking(context, ref, room.asData!.value)
-                    : null,
-                icon: const Icon(Icons.calendar_month_outlined),
-                label: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 14),
-                  child: Text('Đặt lịch xem phòng'),
+        body: room.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => _DetailError(
+            onRetry: () => ref.invalidate(roomDetailProvider(roomId)),
+          ),
+          data: (data) => SharedRoomDetailTabView(
+            room: _tenantViewData(data),
+            onRefresh: () async {
+              ref.invalidate(roomDetailProvider(roomId));
+              await ref.read(roomDetailProvider(roomId).future);
+            },
+          ),
+        ),
+        bottomNavigationBar: room.hasValue
+            ? SafeArea(
+                minimum: const EdgeInsets.all(16),
+                child: FilledButton.icon(
+                  onPressed: room.asData?.value.status == 'PUBLISHED'
+                      ? () => _openBooking(context, ref, room.asData!.value)
+                      : null,
+                  icon: const Icon(Icons.calendar_month_outlined),
+                  label: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 14),
+                    child: Text('Đặt lịch xem phòng'),
+                  ),
                 ),
-              ),
-            )
-          : null,
+              )
+            : null,
+      ),
     );
   }
 
@@ -63,6 +76,39 @@ class RoomDetailScreen extends ConsumerWidget {
   }
 }
 
+SharedRoomDetailData _tenantViewData(RoomDetail room) {
+  final cost = room.cost;
+  return SharedRoomDetailData(
+    title: room.title,
+    status: room.status,
+    priceMonthly: room.priceMonthly,
+    depositAmount: room.depositAmount,
+    areaM2: room.areaM2,
+    maxPeople: room.maxPeople,
+    floor: room.floor,
+    address: room.address,
+    imageUrls: room.imageUrls,
+    amenities: room.amenities,
+    description: room.description,
+    houseRules: room.houseRules,
+    availableDate: room.availableDate,
+    lastConfirmedAt: room.lastConfirmedAt,
+    viewsCount: room.viewsCount,
+    costs: {
+      if (cost?.electricityPrice != null)
+        'Tiền điện / kWh': cost!.electricityPrice!,
+      if (cost?.waterPrice != null) 'Tiền nước': cost!.waterPrice!,
+      if (cost?.internetFee != null) 'Internet': cost!.internetFee!,
+      if (cost?.parkingFee != null) 'Gửi xe': cost!.parkingFee!,
+      if (cost?.serviceFee != null) 'Phí dịch vụ': cost!.serviceFee!,
+      if (cost?.cleaningFee != null) 'Phí vệ sinh': cost!.cleaningFee!,
+      if (cost?.otherFee != null) 'Phí khác': cost!.otherFee!,
+    },
+  );
+}
+
+// TODO: Xóa phần chi tiết cũ sau khi ổn định SharedRoomDetailContent.
+// ignore: unused_element
 class _RoomDetailBody extends StatelessWidget {
   const _RoomDetailBody({required this.room});
   final RoomDetail room;

@@ -2,12 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../domain/entities/landlord_room_detail.dart';
+import '../../../../rooms/presentation/widgets/detail/shared_room_detail_content.dart';
 import '../providers/landlord_room_action_provider.dart';
 import '../providers/landlord_room_provider.dart';
-import '../widgets/detail/landlord_room_amenities_tab.dart';
-import '../widgets/detail/landlord_room_cost_tab.dart';
-import '../widgets/detail/landlord_room_info_tab.dart';
-import '../widgets/detail/landlord_room_media_tab.dart';
 import '../widgets/detail/landlord_room_ui.dart';
 
 class LandlordRoomDetailScreen extends ConsumerWidget {
@@ -103,30 +101,10 @@ class LandlordRoomDetailScreen extends ConsumerWidget {
             message: roomErrorText(error),
             onRetry: () => _refresh(ref),
           ),
-          data: (room) {
-            Future<void> refresh() => _refresh(ref);
-
-            return TabBarView(
-              physics: const BouncingScrollPhysics(),
-              children: [
-                LandlordRoomInfoTab(room: room, onRefresh: refresh),
-                LandlordRoomMediaTab(
-                  room: room,
-                  onRefresh: refresh,
-                  onEdit: () async {
-                    final changed = await context.push<bool>(
-                      '/landlord/rooms/${room.id}/edit',
-                    );
-                    if (changed == true && context.mounted) {
-                      await _refresh(ref);
-                    }
-                  },
-                ),
-                LandlordRoomAmenitiesTab(room: room, onRefresh: refresh),
-                LandlordRoomCostTab(room: room, onRefresh: refresh),
-              ],
-            );
-          },
+          data: (room) => SharedRoomDetailTabView(
+            room: _landlordDetailViewData(room),
+            onRefresh: () => _refresh(ref),
+          ),
         ),
       ),
     );
@@ -141,4 +119,40 @@ class LandlordRoomDetailScreen extends ConsumerWidget {
       // AsyncValue sẽ hiển thị lỗi.
     }
   }
+}
+
+SharedRoomDetailData _landlordDetailViewData(LandlordRoomDetail room) {
+  final cost = room.cost;
+  return SharedRoomDetailData(
+    title: room.title,
+    status: room.status,
+    priceMonthly: room.priceMonthly,
+    depositAmount: room.depositAmount,
+    areaM2: room.areaM2,
+    maxPeople: room.maxPeople,
+    floor: room.floor,
+    address: room.fullAddress,
+    imageUrls: room.images
+        .map((item) => item.displayUrl)
+        .whereType<String>()
+        .toList(growable: false),
+    amenities: room.amenities.map((item) => item.name).toList(growable: false),
+    description: room.description,
+    houseRules: room.houseRules,
+    availableDate: room.availableDate,
+    lastConfirmedAt: room.lastConfirmedAt,
+    viewsCount: room.viewsCount,
+    rejectionReason: room.status == 'REJECTED' ? room.rejectionReason : null,
+    costs: {
+      if (cost != null) ...{
+        'Tiền điện': cost.electricityPrice,
+        'Tiền nước': cost.waterPrice,
+        'Internet': cost.internetFee,
+        'Gửi xe': cost.parkingFee,
+        'Phí dịch vụ': cost.serviceFee,
+        'Phí vệ sinh': cost.cleaningFee,
+        'Phí khác': cost.otherFee,
+      },
+    },
+  );
 }

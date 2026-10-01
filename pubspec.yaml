@@ -73,6 +73,8 @@ flutter:
     - assets/images/icon/
     - assets/data/
     - assets/images/empty_favorites.png
+    - assets/images/banners/
+    - assets/images/universities/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
