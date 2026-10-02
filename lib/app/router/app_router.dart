@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
 import '../../features/auth/presentation/screens/login_screen.dart';
+import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/auth/presentation/screens/role_landing_screen.dart';
 import '../../features/appointments/presentation/screens/create_appointment_screen.dart';
 import '../../features/appointments/presentation/screens/appointment_detail_screen.dart';
@@ -36,13 +36,11 @@ import '../../features/search/presentation/search_screen.dart';
 import '../../features/landlord/rooms/presentation/create_room/landlord_create_room_screen.dart';
 import '../shell/app_shell.dart';
 import '../shell/landlord_shell.dart';
-
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/start',
     routes: [
       GoRoute(path: '/start', builder: (_, _) => const RoleLandingScreen()),
-
       // Tenant shell
       StatefulShellRoute.indexedStack(
         builder: (_, _, navigationShell) =>
@@ -164,13 +162,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
-
       // Màn đăng phòng mở full-screen, không giữ bottom navigation.
       GoRoute(
         path: '/landlord/rooms/create',
         builder: (_, _) => const LandlordCreateRoomScreen(),
       ),
-
       GoRoute(
         path: '/landlord/rooms/:roomId/edit',
         builder: (_, state) {
@@ -181,7 +177,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return LandlordCreateRoomScreen(roomId: roomId);
         },
       ),
-
       GoRoute(
         path: '/landlord/rooms/:roomId',
         builder: (_, state) {
@@ -192,7 +187,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return LandlordRoomOverviewScreen(roomId: roomId);
         },
       ),
-
       GoRoute(
         path: '/landlord/rooms/:roomId/detail',
         builder: (_, state) {
@@ -203,7 +197,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return LandlordRoomDetailScreen(roomId: roomId);
         },
       ),
-
       GoRoute(
         path: '/landlord/appointments/:appointmentId',
         builder: (_, state) {
@@ -216,7 +209,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return LandlordAppointmentDetailScreen(appointment: appointment);
         },
       ),
-
       GoRoute(
         path: '/appointments/create',
         builder: (_, state) {
@@ -250,7 +242,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/notifications',
         builder: (_, _) => const NotificationsScreen(),
       ),
-
       GoRoute(
         path: '/rooms/matches',
         builder: (_, _) => const RoomMatchScreen(),
@@ -260,15 +251,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/rooms/:roomId',
         builder: (_, state) {
           final roomId = state.pathParameters['roomId'];
-
           if (roomId == null || roomId.isEmpty) {
             throw StateError('Thiếu mã phòng.');
           }
-
           return RoomDetailScreen(roomId: roomId);
         },
       ),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
+      GoRoute(
+        path: '/register',
+        builder: (_, _) => const RegisterScreen(),
+      ),
       GoRoute(
         path: '/profile/personal-info',
         builder: (_, _) => const PersonalInfoScreen(),
