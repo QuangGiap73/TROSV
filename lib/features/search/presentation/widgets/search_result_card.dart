@@ -28,24 +28,16 @@ class SearchResultCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(22),
+      elevation: 1,
+      shadowColor: Colors.black.withValues(alpha: .12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(22),
+        side: const BorderSide(color: _border),
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: _border),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: .045),
-                blurRadius: 18,
-                offset: const Offset(0, 7),
-              ),
-            ],
-          ),
-          child: Column(
+        child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _RoomImageSection(
@@ -150,7 +142,6 @@ class SearchResultCard extends StatelessWidget {
                 ),
               ),
             ],
-          ),
         ),
       ),
     );
@@ -262,11 +253,22 @@ class _RoomImage extends StatelessWidget {
       return const _Fallback();
     }
 
-    return Image.network(
-      url!,
-      fit: BoxFit.cover,
-      filterQuality: FilterQuality.medium,
-      errorBuilder: (_, _, _) => const _Fallback(),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final pixelRatio = MediaQuery.devicePixelRatioOf(context);
+        final cacheWidth = (constraints.maxWidth * pixelRatio)
+            .round()
+            .clamp(1, 1440);
+
+        return Image.network(
+          url!,
+          fit: BoxFit.cover,
+          cacheWidth: cacheWidth,
+          filterQuality: FilterQuality.low,
+          gaplessPlayback: true,
+          errorBuilder: (_, _, _) => const _Fallback(),
+        );
+      },
     );
   }
 }

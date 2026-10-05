@@ -27,6 +27,7 @@ import '../../features/rooms/presentation/screens/room_detail_screen.dart';
 import '../../features/rooms/presentation/screens/room_map_screen.dart';
 import '../../features/rooms/presentation/screens/room_match_screen.dart';
 import '../../features/rooms/domain/entities/room_search_query.dart';
+import '../../features/rooms/domain/entities/room_map_args.dart';
 import '../../features/roommate/presentation/screens/roommate_posts_screen.dart';
 import '../../features/roommate/presentation/screens/create_roommate_post_screen.dart';
 import '../../features/roommate/presentation/screens/my_roommate_posts_screen.dart';
@@ -36,6 +37,7 @@ import '../../features/search/presentation/search_screen.dart';
 import '../../features/landlord/rooms/presentation/create_room/landlord_create_room_screen.dart';
 import '../shell/app_shell.dart';
 import '../shell/landlord_shell.dart';
+
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/start',
@@ -60,6 +62,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   final radius = int.tryParse(query['radius'] ?? '');
                   return SearchScreen(
                     title: query['title'] ?? 'Tìm trọ',
+                    mapFocusLabel: query['focus'],
                     initialQuery: RoomSearchQuery(
                       latitude: latitude,
                       longitude: longitude,
@@ -246,7 +249,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/rooms/matches',
         builder: (_, _) => const RoomMatchScreen(),
       ),
-      GoRoute(path: '/rooms/map', builder: (_, _) => const RoomMapScreen()),
+      GoRoute(
+        path: '/rooms/map',
+        builder: (_, state) {
+          final extra = state.extra;
+          return RoomMapScreen(
+            initialQuery: extra is RoomMapArgs
+                ? extra.query
+                : extra is RoomSearchQuery
+                ? extra
+                : null,
+            initialFocusLabel: extra is RoomMapArgs ? extra.focusLabel : null,
+          );
+        },
+      ),
       GoRoute(
         path: '/rooms/:roomId',
         builder: (_, state) {
@@ -258,10 +274,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
-      GoRoute(
-        path: '/register',
-        builder: (_, _) => const RegisterScreen(),
-      ),
+      GoRoute(path: '/register', builder: (_, _) => const RegisterScreen()),
       GoRoute(
         path: '/profile/personal-info',
         builder: (_, _) => const PersonalInfoScreen(),

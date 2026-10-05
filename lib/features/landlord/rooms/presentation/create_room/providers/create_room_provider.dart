@@ -217,6 +217,11 @@ String _requiredRoomId(CreateRoomDraft draft) {
 }
 
 String _contentType(XFile file) {
+  final detected = file.mimeType?.toLowerCase();
+  if (detected != null &&
+      (detected.startsWith('image/') || detected.startsWith('video/'))) {
+    return detected;
+  }
   final name = file.name.toLowerCase();
   if (name.endsWith('.png')) return 'image/png';
   if (name.endsWith('.webp')) return 'image/webp';

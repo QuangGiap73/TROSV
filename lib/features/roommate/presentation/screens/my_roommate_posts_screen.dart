@@ -19,6 +19,17 @@ class MyRoommatePostsScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          tooltip: 'Quay lại',
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/roommate');
+            }
+          },
+        ),
         title: const Text(
           'Tin của tôi',
           style: TextStyle(fontWeight: FontWeight.w800),

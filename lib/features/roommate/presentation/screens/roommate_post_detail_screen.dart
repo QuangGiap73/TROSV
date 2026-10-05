@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/utils/currency_formatter.dart';
@@ -27,6 +28,17 @@ class RoommatePostDetailScreen extends ConsumerWidget {
         appBar: AppBar(
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.transparent,
+          leading: IconButton(
+            tooltip: 'Quay lại',
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/roommate/mine');
+              }
+            },
+          ),
           title: const Text(
             'Chi tiết bài đăng',
             style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),

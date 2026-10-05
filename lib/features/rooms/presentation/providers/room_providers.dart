@@ -6,6 +6,7 @@ import '../../data/repositories/room_repository_impl.dart';
 import '../../domain/entities/room_detail.dart';
 import '../../domain/entities/room_summary.dart';
 import '../../domain/entities/room_search_query.dart';
+import '../../domain/entities/room_trust.dart';
 import '../../domain/repositories/room_repository.dart';
 
 final roomRemoteDataSourceProvider = Provider<RoomRemoteDataSource>((ref) {
@@ -27,4 +28,8 @@ final roomSearchProvider =
 
 final roomDetailProvider = FutureProvider.family<RoomDetail, String>((ref, id) {
   return ref.watch(roomRepositoryProvider).getRoomDetail(id);
+});
+
+final roomTrustProvider = FutureProvider.family<RoomTrust, String>((ref, id) {
+  return ref.watch(roomRepositoryProvider).getRoomTrust(id);
 });

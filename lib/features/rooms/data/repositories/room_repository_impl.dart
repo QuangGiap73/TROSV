@@ -1,6 +1,8 @@
 import '../../domain/entities/room_detail.dart';
 import '../../domain/entities/room_summary.dart';
 import '../../domain/entities/room_search_query.dart';
+import '../../domain/entities/room_report.dart';
+import '../../domain/entities/room_trust.dart';
 import '../../domain/repositories/room_repository.dart';
 import '../datasources/room_remote_data_source.dart';
 
@@ -31,4 +33,12 @@ class RoomRepositoryImpl implements RoomRepository {
   @override
   Future<void> removeFavorite(String roomId) =>
       _remoteDataSource.removeFavorite(roomId);
+
+  @override
+  Future<RoomReport> reportRoom(String roomId, RoomReportRequest request) =>
+      _remoteDataSource.reportRoom(roomId, request);
+
+  @override
+  Future<RoomTrust> getRoomTrust(String roomId) =>
+      _remoteDataSource.getRoomTrust(roomId);
 }

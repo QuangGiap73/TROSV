@@ -46,6 +46,12 @@ class LocationService {
     var permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always) {
+        // Android cần một nhịp để Activity/Geolocator ổn định sau hộp quyền.
+        await Future<void>.delayed(const Duration(milliseconds: 450));
+        permission = await Geolocator.checkPermission();
+      }
     }
 
     if (permission == LocationPermission.denied) {
@@ -62,19 +68,23 @@ class LocationService {
       );
     }
 
+    final lastKnownPosition = await Geolocator.getLastKnownPosition();
+
     try {
       return await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 15),
+          timeLimit: Duration(seconds: 20),
         ),
       );
     } on TimeoutException {
+      if (lastKnownPosition != null) return lastKnownPosition;
       throw const LocationFailure(
         LocationFailureType.timeout,
         'Không lấy được GPS trong thời gian cho phép.',
       );
     } catch (_) {
+      if (lastKnownPosition != null) return lastKnownPosition;
       throw const LocationFailure(
         LocationFailureType.unavailable,
         'Không thể lấy vị trí hiện tại.',

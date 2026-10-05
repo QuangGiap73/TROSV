@@ -6,6 +6,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../domain/entities/room_detail.dart';
 import '../providers/room_providers.dart';
 import '../widgets/detail/shared_room_detail_content.dart';
+import '../widgets/report/room_report_sheet.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
 class RoomDetailScreen extends ConsumerWidget {
@@ -20,6 +21,32 @@ class RoomDetailScreen extends ConsumerWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Chi tiết phòng'),
+          actions: [
+            if (room.asData?.value case final detail?)
+              PopupMenuButton<String>(
+                tooltip: 'Tùy chọn',
+                onSelected: (value) {
+                  if (value == 'report') {
+                    _openReport(context, ref, detail);
+                  }
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(
+                    value: 'report',
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.outlined_flag_rounded,
+                          color: Colors.redAccent,
+                        ),
+                        SizedBox(width: 10),
+                        Text('Báo cáo phòng'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+          ],
           bottom: const SharedRoomDetailTabBar(),
         ),
         body: room.when(
@@ -72,6 +99,56 @@ class RoomDetailScreen extends ConsumerWidget {
         path: '/appointments/create',
         queryParameters: {'roomId': room.id, 'roomTitle': room.title},
       ).toString(),
+    );
+  }
+
+  Future<void> _openReport(
+    BuildContext context,
+    WidgetRef ref,
+    RoomDetail room,
+  ) async {
+    var session = ref.read(authControllerProvider).asData?.value;
+    if (session == null) {
+      ref.read(authControllerProvider.notifier).clearError();
+      final loggedIn = await context.push<bool>('/login');
+      if (loggedIn != true || !context.mounted) return;
+      session = ref.read(authControllerProvider).asData?.value;
+    }
+    if (session == null || !context.mounted) return;
+
+    final report = await showRoomReportSheet(
+      context: context,
+      ref: ref,
+      roomId: room.id,
+      roomTitle: room.title,
+    );
+    if (report == null || !context.mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(
+          Icons.check_circle_rounded,
+          color: Color(0xFF009B7D),
+          size: 52,
+        ),
+        title: const Text('Đã gửi báo cáo'),
+        content: const Text(
+          'Cảm ơn bạn đã giúp cộng đồng TrọSV an toàn và đáng tin cậy hơn. '
+          'Chúng tôi sẽ kiểm tra thông tin sớm nhất có thể.',
+          textAlign: TextAlign.center,
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF009B7D),
+            ),
+            child: const Text('Đã hiểu'),
+          ),
+        ],
+      ),
     );
   }
 }

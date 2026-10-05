@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../models/create_room_draft.dart';
@@ -25,6 +26,7 @@ class RoomMediaStep extends StatefulWidget {
 
 class _RoomMediaStepState extends State<RoomMediaStep> {
   final _picker = ImagePicker();
+  bool _pickingVideo = false;
   CreateRoomDraft get draft => widget.draft;
 
   Future<void> _pickImages() async {
@@ -33,11 +35,34 @@ class _RoomMediaStepState extends State<RoomMediaStep> {
   }
 
   Future<void> _pickVideo() async {
-    final file = await _picker.pickVideo(
-      source: ImageSource.gallery,
-      maxDuration: const Duration(minutes: 2),
-    );
-    if (file != null) setState(() => draft.addVideo(file));
+    if (_pickingVideo) return;
+    setState(() => _pickingVideo = true);
+    try {
+      final file = await _picker.pickVideo(source: ImageSource.gallery);
+      if (file == null || !mounted) return;
+      setState(() => draft.addVideo(file));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Đã thêm video ${file.name}.')));
+    } on PlatformException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error.code == 'photo_access_denied'
+                ? 'Ứng dụng chưa được cấp quyền truy cập video.'
+                : 'Không thể chọn video. Vui lòng thử lại.',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể đọc video đã chọn.')),
+      );
+    } finally {
+      if (mounted) setState(() => _pickingVideo = false);
+    }
   }
 
   @override
@@ -176,6 +201,36 @@ class _RoomMediaStepState extends State<RoomMediaStep> {
                 ],
               ),
             ),
+          if (draft.existingVideos.isNotEmpty || draft.videos.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            const Text(
+              'Video phòng',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            ...draft.existingVideos.map(
+              (media) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _VideoFileCard(
+                  title: 'Video hiện tại',
+                  subtitle: media.url,
+                  uploaded: true,
+                  onRemove: widget.isSaving
+                      ? null
+                      : () => setState(() => draft.removeExistingMedia(media)),
+                ),
+              ),
+            ),
+            if (draft.videos case [final video])
+              _VideoFileCard(
+                title: video.name,
+                subtitle: 'Video mới · ${_fileExtension(video.name)}',
+                file: video,
+                onRemove: widget.isSaving
+                    ? null
+                    : () => setState(draft.removeVideo),
+              ),
+          ],
           const SizedBox(height: 12),
           Row(
             children: [
@@ -189,8 +244,16 @@ class _RoomMediaStepState extends State<RoomMediaStep> {
               const SizedBox(width: 10),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: widget.isSaving ? null : _pickVideo,
-                  icon: const Icon(Icons.video_call_outlined),
+                  onPressed: widget.isSaving || _pickingVideo
+                      ? null
+                      : _pickVideo,
+                  icon: _pickingVideo
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.video_call_outlined),
                   label: Text(
                     draft.videos.isEmpty && draft.existingVideos.isEmpty
                         ? 'Thêm video'
@@ -340,4 +403,113 @@ class _RoomMediaStepState extends State<RoomMediaStep> {
     descriptionController.dispose();
     if (result != null) setState(() => draft.addSpace(result));
   }
+}
+
+class _VideoFileCard extends StatelessWidget {
+  const _VideoFileCard({
+    required this.title,
+    required this.subtitle,
+    required this.onRemove,
+    this.file,
+    this.uploaded = false,
+  });
+
+  final String title;
+  final String subtitle;
+  final XFile? file;
+  final bool uploaded;
+  final VoidCallback? onRemove;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: const Color(0xFFF0FAF7),
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: const Color(0xFFBCE7DD)),
+    ),
+    child: Row(
+      children: [
+        Container(
+          width: 54,
+          height: 54,
+          decoration: BoxDecoration(
+            color: const Color(0xFFDAF3ED),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(
+            Icons.play_circle_fill_rounded,
+            size: 32,
+            color: Color(0xFF009B7D),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Color(0xFF687773), fontSize: 12),
+              ),
+              if (file != null)
+                FutureBuilder<int>(
+                  future: file!.length(),
+                  builder: (_, snapshot) => Text(
+                    snapshot.hasData
+                        ? _formatFileSize(snapshot.data!)
+                        : 'Đang đọc dung lượng...',
+                    style: const TextStyle(
+                      color: Color(0xFF00866D),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                )
+              else if (uploaded)
+                const Text(
+                  'Đã tải lên',
+                  style: TextStyle(
+                    color: Color(0xFF00866D),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        IconButton(
+          tooltip: 'Xóa video',
+          onPressed: onRemove,
+          icon: const Icon(
+            Icons.delete_outline_rounded,
+            color: Colors.redAccent,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+String _fileExtension(String filename) {
+  final separator = filename.lastIndexOf('.');
+  if (separator < 0 || separator == filename.length - 1) return 'VIDEO';
+  return filename.substring(separator + 1).toUpperCase();
+}
+
+String _formatFileSize(int bytes) {
+  if (bytes >= 1024 * 1024) {
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+  if (bytes >= 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+  return '$bytes B';
 }

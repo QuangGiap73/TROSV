@@ -8,6 +8,7 @@ import '../../favorites/presentation/providers/favorites_provider.dart';
 import '../../preferences/domain/entities/amenity.dart';
 import '../../preferences/presentation/providers/preference_provider.dart';
 import '../../rooms/domain/entities/room_search_query.dart';
+import '../../rooms/domain/entities/room_map_args.dart';
 import '../../rooms/domain/entities/room_summary.dart';
 import '../../rooms/presentation/providers/room_match_provider.dart';
 import '../../rooms/presentation/providers/room_providers.dart';
@@ -26,10 +27,12 @@ class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({
     this.initialQuery = const RoomSearchQuery(),
     this.title = 'Tìm trọ',
+    this.mapFocusLabel,
     super.key,
   });
   final RoomSearchQuery initialQuery;
   final String title;
+  final String? mapFocusLabel;
   @override
   ConsumerState<SearchScreen> createState() => _SearchScreenState();
 }
@@ -38,11 +41,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _searchController = TextEditingController();
   Timer? _debounce;
   late RoomSearchQuery _query;
+  String? _mapFocusLabel;
   _SearchMode _mode = _SearchMode.all;
   @override
   void initState() {
     super.initState();
     _query = widget.initialQuery;
+    _mapFocusLabel = widget.mapFocusLabel;
     _searchController.text = widget.initialQuery.keyword ?? '';
   }
 
@@ -52,6 +57,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     if (oldWidget.initialQuery != widget.initialQuery) {
       _debounce?.cancel();
       _query = widget.initialQuery;
+      _mapFocusLabel = widget.mapFocusLabel;
       _searchController.text = widget.initialQuery.keyword ?? '';
       _mode = _SearchMode.all;
     }
@@ -82,23 +88,22 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final session = ref.watch(authControllerProvider).asData?.value;
-    final favorites = ref.watch(favoritesProvider).asData?.value ?? const [];
-    final amenities = ref.watch(amenitiesProvider).asData?.value ?? const [];
+    final session = ref.watch(
+      authControllerProvider.select((state) => state.asData?.value),
+    );
     final effectiveQuery = _mode == _SearchMode.newest
         ? _query.copyWith(sort: 'NEWEST')
         : _query;
-    final publicRooms = ref.watch(roomSearchProvider(effectiveQuery));
-    final matches = session != null && _mode == _SearchMode.recommended
-        ? ref.watch(roomMatchesProvider)
-        : null;
-    final results = _mode == _SearchMode.recommended
-        ? matches?.whenData(
-                (items) => items.map((match) => match.room).toList(),
-              ) ??
-              const AsyncData<List<RoomSummary>>([])
-        : publicRooms;
-    final favoriteIds = favorites.map((room) => room.id).toSet();
+    final AsyncValue<List<RoomSummary>> results;
+    if (_mode == _SearchMode.recommended) {
+      results = session == null
+          ? const AsyncData<List<RoomSummary>>([])
+          : ref
+                .watch(roomMatchesProvider)
+                .whenData((items) => items.map((match) => match.room).toList());
+    } else {
+      results = ref.watch(roomSearchProvider(effectiveQuery));
+    }
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark.copyWith(
         statusBarColor: Colors.transparent,
@@ -109,165 +114,201 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         backgroundColor: _background,
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
         floatingActionButton: _MapFloatingButton(
-          onTap: () => context.push('/rooms/map'),
+          onTap: () async {
+            final result = await context.push<RoomMapArgs>(
+              '/rooms/map',
+              extra: RoomMapArgs(
+                query: effectiveQuery,
+                focusLabel: _mapFocusLabel,
+              ),
+            );
+            if (!mounted || result == null) return;
+            setState(() {
+              _query = result.query;
+              _mapFocusLabel = result.focusLabel;
+              _mode = _SearchMode.all;
+            });
+          },
         ),
-        body: NestedScrollView(
-          headerSliverBuilder: (context, innerBoxIsScrolled) => [
-            SliverToBoxAdapter(
-              child: _SearchHero(
-                controller: _searchController,
-                activeFilterCount: _activeFilterCount,
-                onKeywordChanged: _onKeywordChanged,
-                onClearSearch: () {
-                  _searchController.clear();
-                  _onKeywordChanged('');
-                  setState(() {});
-                },
-                onFilterTap: () => _showAdvancedFilters(context, amenities),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-                child: _ModeSelector(
-                  value: _mode,
-                  onChanged: (mode) => setState(() => _mode = mode),
-                ),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 7, 16, 0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _QuickFilterButton(
-                        icon: Icons.school_outlined,
-                        label: 'Gần trường',
-                        active: false,
-                        onTap: () => context.push('/profile/preferences'),
-                      ),
-                    ),
-                    const SizedBox(width: 9),
-                    Expanded(
-                      child: _QuickFilterButton(
-                        icon: Icons.payments_outlined,
-                        label: _priceLabel,
-                        active:
-                            _query.minPrice != null || _query.maxPrice != null,
-                        onTap: () => _choosePrice(context),
-                      ),
-                    ),
-                    const SizedBox(width: 9),
-                    Expanded(
-                      child: _QuickFilterButton(
-                        icon: Icons.tune_rounded,
-                        label: _activeFilterCount > 0
-                            ? 'Bộ lọc ($_activeFilterCount)'
-                            : 'Bộ lọc',
-                        active: _activeFilterCount > 0,
-                        onTap: () => _showAdvancedFilters(context, amenities),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 5),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: results.maybeWhen(
-                        data: (items) => RichText(
-                          text: TextSpan(
-                            style: const TextStyle(
-                              color: _text,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w900,
-                            ),
-                            children: [
-                              TextSpan(
-                                text: '${items.length}',
-                                style: const TextStyle(
-                                  color: _green,
-                                  fontSize: 18,
-                                ),
-                              ),
-                              const TextSpan(text: ' phòng phù hợp'),
-                            ],
-                          ),
-                        ),
-                        orElse: () => const SizedBox.shrink(),
-                      ),
-                    ),
-                    _SortButton(
-                      label: _sortLabel,
-                      onTap: () => _chooseSort(context),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-          body: results.when(
-            loading: () => const _SearchLoading(),
-            error: (error, _) => _SearchError(
-              onRetry: () {
-                if (_mode == _SearchMode.recommended) {
-                  ref.invalidate(roomMatchesProvider);
-                } else {
-                  ref.invalidate(roomSearchProvider(effectiveQuery));
-                }
-              },
-            ),
-            data: (items) {
-              if (_mode == _SearchMode.recommended && session == null) {
-                return _LoginForRecommendation(
-                  onLogin: () => context.push('/login'),
-                );
-              }
-              if (items.isEmpty) {
-                return _EmptyResults(
-                  hasFilters:
-                      _activeFilterCount > 0 ||
-                      _searchController.text.trim().isNotEmpty,
-                  onClear: _clearAllFilters,
-                );
-              }
-              return RefreshIndicator(
-                color: _green,
-                onRefresh: () async {
-                  if (_mode == _SearchMode.recommended) {
-                    ref.invalidate(roomMatchesProvider);
-                    await ref.read(roomMatchesProvider.future);
-                  } else {
-                    ref.invalidate(roomSearchProvider(effectiveQuery));
-                    await ref.read(roomSearchProvider(effectiveQuery).future);
-                  }
-                },
-                child: ListView.separated(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 2, 16, 28),
-                  itemCount: items.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 14),
-                  itemBuilder: (context, index) {
-                    final room = items[index];
-                    return SearchResultCard(
-                      room: room,
-                      isFavorite: favoriteIds.contains(room.id),
-                      onTap: () => context.push('/rooms/${room.id}'),
-                      onFavoriteTap: () => _toggleFavorite(context, room),
-                    );
+        body: RefreshIndicator(
+          color: _green,
+          onRefresh: () => _refreshResults(effectiveQuery),
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            cacheExtent: 700,
+            slivers: [
+              SliverToBoxAdapter(
+                child: _SearchHero(
+                  controller: _searchController,
+                  activeFilterCount: _activeFilterCount,
+                  onKeywordChanged: _onKeywordChanged,
+                  onClearSearch: () {
+                    _searchController.clear();
+                    _onKeywordChanged('');
+                    setState(() {});
                   },
+                  onFilterTap: () => _showAdvancedFilters(context),
                 ),
-              );
-            },
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                  child: _ModeSelector(
+                    value: _mode,
+                    onChanged: (mode) => setState(() => _mode = mode),
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 7, 16, 0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _QuickFilterButton(
+                          icon: Icons.school_outlined,
+                          label: 'Gần trường',
+                          active: false,
+                          onTap: () => context.push('/profile/preferences'),
+                        ),
+                      ),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: _QuickFilterButton(
+                          icon: Icons.payments_outlined,
+                          label: _priceLabel,
+                          active:
+                              _query.minPrice != null ||
+                              _query.maxPrice != null,
+                          onTap: () => _choosePrice(context),
+                        ),
+                      ),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: _QuickFilterButton(
+                          icon: Icons.tune_rounded,
+                          label: _activeFilterCount > 0
+                              ? 'Bộ lọc ($_activeFilterCount)'
+                              : 'Bộ lọc',
+                          active: _activeFilterCount > 0,
+                          onTap: () => _showAdvancedFilters(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 5),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: results.maybeWhen(
+                          data: (items) => RichText(
+                            text: TextSpan(
+                              style: const TextStyle(
+                                color: _text,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
+                              ),
+                              children: [
+                                TextSpan(
+                                  text: '${items.length}',
+                                  style: const TextStyle(
+                                    color: _green,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                                const TextSpan(text: ' phòng phù hợp'),
+                              ],
+                            ),
+                          ),
+                          orElse: () => const SizedBox.shrink(),
+                        ),
+                      ),
+                      _SortButton(
+                        label: _sortLabel,
+                        onTap: () => _chooseSort(context),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              ...results.when(
+                loading: () => const [
+                  SliverFillRemaining(child: _SearchLoading()),
+                ],
+                error: (error, _) => [
+                  SliverFillRemaining(
+                    child: _SearchError(
+                      onRetry: () {
+                        if (_mode == _SearchMode.recommended) {
+                          ref.invalidate(roomMatchesProvider);
+                        } else {
+                          ref.invalidate(roomSearchProvider(effectiveQuery));
+                        }
+                      },
+                    ),
+                  ),
+                ],
+                data: (items) {
+                  if (_mode == _SearchMode.recommended && session == null) {
+                    return [
+                      SliverFillRemaining(
+                        child: _LoginForRecommendation(
+                          onLogin: () => context.push('/login'),
+                        ),
+                      ),
+                    ];
+                  }
+                  if (items.isEmpty) {
+                    return [
+                      SliverFillRemaining(
+                        child: _EmptyResults(
+                          hasFilters:
+                              _activeFilterCount > 0 ||
+                              _searchController.text.trim().isNotEmpty,
+                          onClear: _clearAllFilters,
+                        ),
+                      ),
+                    ];
+                  }
+                  return [
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 2, 16, 28),
+                      sliver: SliverList.separated(
+                        itemCount: items.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 14),
+                        itemBuilder: (context, index) {
+                          final room = items[index];
+                          return _SearchResultItem(
+                            key: ValueKey(room.id),
+                            room: room,
+                            onTap: () => context.push('/rooms/${room.id}'),
+                            onFavoriteTap: () => _toggleFavorite(context, room),
+                          );
+                        },
+                      ),
+                    ),
+                  ];
+                },
+              ),
+            ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _refreshResults(RoomSearchQuery effectiveQuery) async {
+    if (_mode == _SearchMode.recommended) {
+      ref.invalidate(roomMatchesProvider);
+      await ref.read(roomMatchesProvider.future);
+      return;
+    }
+    ref.invalidate(roomSearchProvider(effectiveQuery));
+    await ref.read(roomSearchProvider(effectiveQuery).future);
   }
 
   int get _activeFilterCount => [
@@ -364,10 +405,17 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     });
   }
 
-  Future<void> _showAdvancedFilters(
-    BuildContext context,
-    List<Amenity> amenities,
-  ) async {
+  Future<void> _showAdvancedFilters(BuildContext context) async {
+    List<Amenity> amenities;
+    try {
+      amenities = await ref.read(amenitiesProvider.future);
+    } catch (_) {
+      if (context.mounted) {
+        _message(context, 'KhÃ´ng thá»ƒ táº£i danh sÃ¡ch tiá»‡n Ã­ch.');
+      }
+      return;
+    }
+    if (!context.mounted) return;
     final result = await showModalBottomSheet<_AdvancedFilterResult>(
       context: context,
       isScrollControlled: true,
@@ -492,6 +540,36 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         _message(context, 'Không thể cập nhật phòng yêu thích.');
       }
     }
+  }
+}
+
+class _SearchResultItem extends ConsumerWidget {
+  const _SearchResultItem({
+    required this.room,
+    required this.onTap,
+    required this.onFavoriteTap,
+    super.key,
+  });
+
+  final RoomSummary room;
+  final VoidCallback onTap;
+  final VoidCallback onFavoriteTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isFavorite = ref.watch(
+      favoritesProvider.select(
+        (state) =>
+            state.asData?.value.any((item) => item.id == room.id) ?? false,
+      ),
+    );
+
+    return SearchResultCard(
+      room: room,
+      isFavorite: isFavorite,
+      onTap: onTap,
+      onFavoriteTap: onFavoriteTap,
+    );
   }
 }
 

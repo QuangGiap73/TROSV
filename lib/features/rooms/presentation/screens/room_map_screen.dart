@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,14 +11,23 @@ import '../../../../core/config/goong_config.dart';
 import '../../../../core/location/location_failure.dart';
 import '../../../../core/location/location_provider.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../preferences/domain/entities/amenity.dart';
+import '../../../preferences/presentation/providers/preference_provider.dart';
+import '../../../landlord/rooms/presentation/create_room/providers/property_location_provider.dart';
+import '../../../landlord/rooms/domain/entities/location/geocoded_address.dart';
 import '../../domain/entities/room_search_query.dart';
+import '../../domain/entities/room_map_args.dart';
 import '../../domain/entities/room_summary.dart';
 import '../providers/room_providers.dart';
+import '../providers/room_map_provider.dart';
 
-const _mapRoomQuery = RoomSearchQuery(limit: 100);
+const _hanoiFallbackLocation = LatLng(21.0285, 105.8542);
 
 class RoomMapScreen extends ConsumerStatefulWidget {
-  const RoomMapScreen({super.key});
+  const RoomMapScreen({this.initialQuery, this.initialFocusLabel, super.key});
+
+  final RoomSearchQuery? initialQuery;
+  final String? initialFocusLabel;
 
   @override
   ConsumerState<RoomMapScreen> createState() => _RoomMapScreenState();
@@ -22,109 +35,213 @@ class RoomMapScreen extends ConsumerStatefulWidget {
 
 class _RoomMapScreenState extends ConsumerState<RoomMapScreen> {
   MapLibreMapController? _mapController;
-  final Map<String, RoomSummary> _roomByCircleId = {};
+  final Map<String, RoomSummary> _roomBySymbolId = {};
   bool _styleLoaded = false;
-  bool _renderingMarkers = false;
-  String _renderSignature = '';
   RoomSummary? _selectedRoom;
   LatLng? _currentLocation;
   Circle? _userLocationCircle;
   bool _locating = false;
   bool _locationExplained = false;
+  bool _mapStateReady = false;
+  bool _awaitingInitialLocation = false;
+
+  List<RoomSummary>? _pendingMarkerRooms;
+  bool _renderingMarkers = false;
+  String _renderSignature = '';
+  final Set<String> _registeredMarkerImages = {};
+  LatLng? _focusLocation;
+  String? _focusLabel;
+  LatLng? _pendingCameraLocation;
+  double _pendingCameraZoom = 14;
+  bool _pendingCameraAnimated = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final query = widget.initialQuery;
+    _focusLabel = widget.initialFocusLabel;
+    if (_focusLabel != null &&
+        query?.latitude != null &&
+        query?.longitude != null) {
+      _focusLocation = LatLng(query!.latitude!, query.longitude!);
+    }
+    final initialMapQuery = _focusLocation == null
+        ? query ?? const RoomSearchQuery()
+        : query!.copyWith(
+            radiusMeters: 3000,
+            sort: 'DISTANCE',
+            page: 1,
+            limit: 50,
+          );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await _initializeStartingPosition(initialMapQuery);
+    });
+  }
+
+  Future<void> _initializeStartingPosition(RoomSearchQuery query) async {
+    final controller = ref.read(roomMapControllerProvider.notifier);
+
+    if (query.latitude != null && query.longitude != null) {
+      controller.initialize(query);
+      if (mounted) setState(() => _mapStateReady = true);
+      return;
+    }
+
+    // Lưu các bộ lọc trước, nhưng chưa dựng map/call API cho tới khi GPS xong.
+    controller.initialize(query);
+    controller.searchLocation(_hanoiFallbackLocation);
+    setState(() {
+      _awaitingInitialLocation = true;
+      _mapStateReady = true;
+    });
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    final accepted = await _confirmLocationUse();
+    if (!mounted) return;
+
+    if (accepted) {
+      setState(() => _awaitingInitialLocation = false);
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+
+      // Dùng chính xác cùng handler với nút định vị xanh.
+      await _goToCurrentLocation(skipPermissionExplanation: true);
+      return;
+    }
+
+    if (mounted && _awaitingInitialLocation) {
+      setState(() => _awaitingInitialLocation = false);
+    }
+  }
+
+  Future<bool> _confirmLocationUse() async {
+    if (_locationExplained) return true;
+    final accepted = await showModalBottomSheet<bool>(
+      context: context,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.transparent,
+      builder: (sheetContext) => _LocationPermissionCard(
+        onLater: () => Navigator.pop(sheetContext, false),
+        onAllow: () => Navigator.pop(sheetContext, true),
+      ),
+    );
+    if (accepted == true) _locationExplained = true;
+    return accepted == true;
+  }
 
   @override
   Widget build(BuildContext context) {
     if (!GoongConfig.hasMaptilesKey) return const _MissingMapKeyScreen();
+    if (!_mapStateReady) return const _MapInitializingScreen();
 
-    final rooms = ref.watch(roomSearchProvider(_mapRoomQuery));
-    final mappableRooms = rooms.asData?.value.where(_hasCoordinates).toList();
+    final mapState = ref.watch(roomMapControllerProvider);
+    ref.listen<RoomMapState>(roomMapControllerProvider, (previous, next) {
+      final previousLat = previous?.query.latitude;
+      final previousLng = previous?.query.longitude;
+      final nextLat = next.query.latitude;
+      final nextLng = next.query.longitude;
+      if (nextLat == null || nextLng == null) return;
+      if (previousLat == nextLat && previousLng == nextLng) return;
 
-    if (mappableRooms != null) {
-      final signature = mappableRooms.map((room) => room.id).join('|');
-      if (_styleLoaded && signature != _renderSignature) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _renderMarkers(mappableRooms, signature);
-        });
-      }
-    }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        unawaited(
+          _moveCameraTo(
+            LatLng(nextLat, nextLng),
+            zoom: _focusLocation != null ? 14 : next.pendingZoom,
+            animated: true,
+          ),
+        );
+      });
+    });
+    final AsyncValue<List<RoomSummary>> rooms = _awaitingInitialLocation
+        ? const AsyncLoading<List<RoomSummary>>()
+        : ref.watch(roomSearchProvider(mapState.query));
+    final mappableRooms =
+        rooms.asData?.value.where(_hasCoordinates).take(50).toList() ??
+        const <RoomSummary>[];
+
+    _scheduleMarkerRender(mappableRooms);
 
     return Scaffold(
       body: Stack(
         children: [
-          MapLibreMap(
-            styleString: GoongConfig.mapStyleUrl,
-            initialCameraPosition: const CameraPosition(
-              target: LatLng(21.0285, 105.8542),
-              zoom: 11.5,
+          RepaintBoundary(
+            child: MapLibreMap(
+              styleString: GoongConfig.mapStyleUrl,
+              initialCameraPosition: CameraPosition(
+                target: _initialCameraTarget(mapState),
+                zoom: _focusLocation != null
+                    ? 14
+                    : mapState.query.latitude != null &&
+                          mapState.query.longitude != null
+                    ? 13
+                    : 5.5,
+              ),
+              compassEnabled: false,
+              logoEnabled: false,
+              attributionButtonPosition: null,
+              rotateGesturesEnabled: true,
+              tiltGesturesEnabled: false,
+              trackCameraPosition: true,
+              onMapCreated: _onMapCreated,
+              onStyleLoadedCallback: _onStyleLoaded,
+              onCameraIdle: _onCameraIdle,
             ),
-            compassEnabled: true,
-            logoEnabled: false,
-            attributionButtonPosition: null,
-            onMapCreated: (controller) {
-              _mapController = controller;
-              controller.onCircleTapped.add(_onCircleTapped);
-            },
-            onStyleLoadedCallback: () {
-              _styleLoaded = true;
-              final items = ref
-                  .read(roomSearchProvider(_mapRoomQuery))
-                  .asData
-                  ?.value
-                  .where(_hasCoordinates)
-                  .toList();
-              if (items != null) {
-                _renderMarkers(items, items.map((room) => room.id).join('|'));
-              }
-            },
           ),
           Positioned(
             top: MediaQuery.paddingOf(context).top + 10,
             left: 12,
-            child: _MapButton(
-              icon: Icons.arrow_back_rounded,
-              tooltip: 'Quay lại',
-              onTap: () => context.pop(),
-            ),
-          ),
-          Positioned(
-            top: MediaQuery.paddingOf(context).top + 10,
-            left: 66,
-            right: 66,
-            child: _RoomCount(
-              loading: rooms.isLoading,
-              count: mappableRooms?.length,
-            ),
-          ),
-          Positioned(
-            top: MediaQuery.paddingOf(context).top + 10,
             right: 12,
-            child: _MapButton(
-              icon: Icons.refresh_rounded,
-              tooltip: 'Tải lại phòng',
-              onTap: () => ref.invalidate(roomSearchProvider(_mapRoomQuery)),
+            child: _MapSearchBar(
+              label: _focusLabel,
+              onBack: _returnToList,
+              onSearch: _openLocationSearch,
+              onFilter: _openFilters,
             ),
           ),
-          Positioned(
-            top: MediaQuery.paddingOf(context).top + 68,
-            left: 14,
-            right: 14,
-            child: _MapViewSelector(onListTap: () => context.pop()),
-          ),
+          if (mapState.canSearchThisArea)
+            Positioned(
+              top: MediaQuery.paddingOf(context).top + 72,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: _SearchThisAreaButton(
+                  onTap: () => ref
+                      .read(roomMapControllerProvider.notifier)
+                      .searchThisArea(),
+                ),
+              ),
+            ),
+          if (rooms.isLoading && !_awaitingInitialLocation)
+            const Positioned.fill(child: _MapLoadingOverlay()),
           if (rooms.hasError)
             Positioned(
-              top: MediaQuery.paddingOf(context).top + 116,
+              top: MediaQuery.paddingOf(context).top + 124,
               left: 16,
               right: 16,
-              child: Material(
-                color: const Color(0xFFFFF1F1),
-                borderRadius: BorderRadius.circular(14),
-                child: const Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Text(
-                    'Không thể tải vị trí phòng. Hãy kiểm tra kết nối và thử lại.',
-                    textAlign: TextAlign.center,
-                  ),
-                ),
+              child: _MapErrorBanner(
+                onRetry: () =>
+                    ref.invalidate(roomSearchProvider(mapState.query)),
+              ),
+            ),
+          if (!_awaitingInitialLocation &&
+              rooms.asData != null &&
+              mappableRooms.isEmpty)
+            Positioned(
+              top: MediaQuery.paddingOf(context).top + 94,
+              left: 24,
+              right: 24,
+              bottom: MediaQuery.paddingOf(context).bottom + 82,
+              child: _EmptyMapResults(
+                radiusMeters: mapState.query.radiusMeters ?? 3000,
+                onExpandRadius: () =>
+                    ref.read(roomMapControllerProvider.notifier).expandRadius(),
               ),
             ),
           if (_selectedRoom case final room?)
@@ -137,12 +254,22 @@ class _RoomMapScreenState extends ConsumerState<RoomMapScreen> {
                 onClose: () => setState(() => _selectedRoom = null),
                 onTap: () => context.push('/rooms/${room.id}'),
               ),
+            )
+          else
+            Positioned(
+              left: 24,
+              right: 24,
+              bottom: MediaQuery.paddingOf(context).bottom + 18,
+              child: _ShowListButton(
+                count: mappableRooms.length,
+                onTap: _returnToList,
+              ),
             ),
           Positioned(
             right: 16,
             bottom:
                 MediaQuery.paddingOf(context).bottom +
-                (_selectedRoom == null ? 24 : 146),
+                (_selectedRoom == null ? 84 : 146),
             child: _LocationButton(
               loading: _locating,
               onTap: _locating ? null : _goToCurrentLocation,
@@ -153,31 +280,150 @@ class _RoomMapScreenState extends ConsumerState<RoomMapScreen> {
     );
   }
 
-  Future<void> _goToCurrentLocation() async {
-    if (!_locationExplained) {
-      final accepted = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Sử dụng vị trí của bạn?'),
-          content: const Text(
-            'TrọSV cần vị trí để đưa bản đồ đến nơi bạn đang đứng và tìm '
-            'phòng ở gần. Vị trí chỉ được lấy khi bạn sử dụng chức năng này.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Để sau'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Tiếp tục'),
-            ),
-          ],
-        ),
-      );
-      if (accepted != true || !mounted) return;
-      _locationExplained = true;
+  LatLng _initialCameraTarget(RoomMapState mapState) {
+    if (_focusLocation case final schoolLocation?) return schoolLocation;
+
+    final latitude = mapState.query.latitude;
+    final longitude = mapState.query.longitude;
+    if (latitude != null && longitude != null) {
+      return LatLng(latitude, longitude);
     }
+
+    return _hanoiFallbackLocation;
+  }
+
+  void _onMapCreated(MapLibreMapController controller) {
+    _mapController = controller;
+    controller.onSymbolTapped.add(_onSymbolTapped);
+    unawaited(_syncCameraWithSelectedLocation());
+  }
+
+  Future<void> _syncCameraWithSelectedLocation() async {
+    final mapState = ref.read(roomMapControllerProvider);
+    final latitude = mapState.query.latitude;
+    final longitude = mapState.query.longitude;
+    if (latitude == null || longitude == null) return;
+
+    await _moveCameraTo(
+      LatLng(latitude, longitude),
+      zoom: _focusLocation != null ? 14 : mapState.pendingZoom,
+      animated: false,
+    );
+  }
+
+  Future<void> _moveCameraTo(
+    LatLng location, {
+    required double zoom,
+    required bool animated,
+  }) async {
+    final controller = _mapController;
+    if (controller == null || !_styleLoaded) {
+      _pendingCameraLocation = location;
+      _pendingCameraZoom = zoom;
+      _pendingCameraAnimated = animated;
+      return;
+    }
+    final update = CameraUpdate.newCameraPosition(
+      CameraPosition(target: location, zoom: zoom),
+    );
+    if (animated) {
+      await controller.animateCamera(update);
+    } else {
+      await controller.moveCamera(update);
+    }
+  }
+
+  Future<void> _onStyleLoaded() async {
+    final controller = _mapController;
+    if (controller == null) return;
+    await controller.setSymbolIconAllowOverlap(false);
+    _registeredMarkerImages.clear();
+    _styleLoaded = true;
+    final pendingLocation = _pendingCameraLocation;
+    if (pendingLocation != null) {
+      final pendingZoom = _pendingCameraZoom;
+      final pendingAnimated = _pendingCameraAnimated;
+      _pendingCameraLocation = null;
+      await _moveCameraTo(
+        pendingLocation,
+        zoom: pendingZoom,
+        animated: pendingAnimated,
+      );
+    } else {
+      await _syncCameraWithSelectedLocation();
+    }
+    if (_currentLocation != null) await _drawUserLocation();
+    final query = ref.read(roomMapControllerProvider).query;
+    final items =
+        ref
+            .read(roomSearchProvider(query))
+            .asData
+            ?.value
+            .where(_hasCoordinates)
+            .take(50)
+            .toList() ??
+        const <RoomSummary>[];
+    _scheduleMarkerRender(items);
+  }
+
+  void _onCameraIdle() {
+    final camera = _mapController?.cameraPosition;
+    if (camera == null) return;
+    ref
+        .read(roomMapControllerProvider.notifier)
+        .stageViewport(center: camera.target, zoom: camera.zoom);
+  }
+
+  void _returnToList() {
+    final query = ref.read(roomMapControllerProvider).query;
+    context.pop(RoomMapArgs(query: query, focusLabel: _focusLabel));
+  }
+
+  Future<void> _openFilters() async {
+    final current = ref.read(roomMapControllerProvider).query;
+    final amenities =
+        ref.read(amenitiesProvider).asData?.value ?? const <Amenity>[];
+    final result = await showModalBottomSheet<RoomSearchQuery>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _MapFilterSheet(query: current, amenities: amenities),
+    );
+    if (!mounted || result == null) return;
+    ref.read(roomMapControllerProvider.notifier).updateFilters(result);
+  }
+
+  Future<void> _openLocationSearch() async {
+    final result = await showModalBottomSheet<_MapPlaceResult>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const _MapPlaceSearchSheet(),
+    );
+    if (!mounted || result == null) return;
+
+    setState(() {
+      _focusLabel = result.label;
+      _focusLocation = result.location;
+      _renderSignature = '';
+    });
+    await _mapController?.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(target: result.location, zoom: 14),
+      ),
+    );
+    ref
+        .read(roomMapControllerProvider.notifier)
+        .searchLocation(result.location);
+  }
+
+  Future<void> _goToCurrentLocation({
+    bool skipPermissionExplanation = false,
+  }) async {
+    final accepted = skipPermissionExplanation || await _confirmLocationUse();
+    if (!accepted || !mounted) return;
 
     setState(() => _locating = true);
     try {
@@ -185,14 +431,15 @@ class _RoomMapScreenState extends ConsumerState<RoomMapScreen> {
           .read(locationServiceProvider)
           .getCurrentPosition();
       final location = LatLng(position.latitude, position.longitude);
-      _currentLocation = location;
+      setState(() {
+        _currentLocation = location;
+        _focusLocation = null;
+        _focusLabel = null;
+      });
 
-      await _mapController?.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(target: location, zoom: 15),
-        ),
-      );
-      await _drawUserLocation();
+      ref.read(roomMapControllerProvider.notifier).useCurrentLocation(location);
+      await _moveCameraTo(location, zoom: 15, animated: true);
+      if (_styleLoaded) await _drawUserLocation();
     } on LocationFailure catch (failure) {
       if (!mounted) return;
       await _handleLocationFailure(failure);
@@ -273,44 +520,253 @@ class _RoomMapScreenState extends ConsumerState<RoomMapScreen> {
     );
   }
 
-  Future<void> _renderMarkers(List<RoomSummary> rooms, String signature) async {
+  void _scheduleMarkerRender(List<RoomSummary> rooms) {
+    if (!_styleLoaded) return;
+    final signature = _markerSignature(rooms);
+    if (signature == _renderSignature) return;
+
+    _pendingMarkerRooms = List<RoomSummary>.unmodifiable(rooms);
+    if (_renderingMarkers) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _drainMarkerQueue();
+    });
+  }
+
+  Future<void> _drainMarkerQueue() async {
     final controller = _mapController;
     if (controller == null || !_styleLoaded || _renderingMarkers) return;
 
     _renderingMarkers = true;
     try {
-      await controller.clearCircles();
-      _roomByCircleId.clear();
+      while (_pendingMarkerRooms != null) {
+        final rooms = _pendingMarkerRooms!;
+        _pendingMarkerRooms = null;
+        await controller.clearSymbols();
+        _roomBySymbolId.clear();
 
-      final circles = await controller.addCircles(
-        rooms
-            .map(
-              (room) => CircleOptions(
-                geometry: LatLng(room.latitude!, room.longitude!),
-                circleRadius: 9,
-                circleColor: '#008E79',
-                circleStrokeColor: '#FFFFFF',
-                circleStrokeWidth: 3,
-              ),
-            )
-            .toList(),
-      );
-      for (var index = 0; index < circles.length; index++) {
-        _roomByCircleId[circles[index].id] = rooms[index];
+        if (rooms.isNotEmpty) {
+          await _ensureMarkerImages(controller, rooms);
+          final symbols = await controller.addSymbols(
+            rooms
+                .map(
+                  (room) => SymbolOptions(
+                    geometry: LatLng(room.latitude!, room.longitude!),
+                    iconImage: _markerImageName(
+                      room.priceMonthly,
+                      selected: room.id == _selectedRoom?.id,
+                    ),
+                    iconSize: room.id == _selectedRoom?.id ? .88 : .80,
+                    iconAnchor: 'bottom',
+                    zIndex: room.id == _selectedRoom?.id ? 2 : 1,
+                  ),
+                )
+                .toList(growable: false),
+          );
+          for (var index = 0; index < symbols.length; index++) {
+            _roomBySymbolId[symbols[index].id] = rooms[index];
+          }
+        }
+
+        await _drawFocusMarker(controller);
+        await _drawUserLocation();
+        _renderSignature = _markerSignature(rooms);
       }
-      _userLocationCircle = null;
-      await _drawUserLocation();
-      _renderSignature = signature;
     } finally {
       _renderingMarkers = false;
+      if (_pendingMarkerRooms != null && mounted) {
+        _drainMarkerQueue();
+      }
     }
   }
 
-  void _onCircleTapped(Circle circle) {
-    final room = _roomByCircleId[circle.id];
+  String _markerSignature(List<RoomSummary> rooms) {
+    final roomSignature = rooms
+        .map(
+          (room) =>
+              '${room.id}:${room.latitude}:${room.longitude}:${room.priceMonthly}',
+        )
+        .join('|');
+    return '${_focusLocation?.latitude}:${_focusLocation?.longitude}:'
+        '${_selectedRoom?.id}|$roomSignature';
+  }
+
+  Future<void> _ensureMarkerImages(
+    MapLibreMapController controller,
+    List<RoomSummary> rooms,
+  ) async {
+    for (final room in rooms) {
+      final selected = room.id == _selectedRoom?.id;
+      final name = _markerImageName(room.priceMonthly, selected: selected);
+      if (_registeredMarkerImages.contains(name)) continue;
+      await controller.addImage(
+        name,
+        await _createPriceMarkerImage(
+          selected ? const Color(0xFF006F5F) : const Color(0xFF00A884),
+          _shortPrice(room.priceMonthly),
+        ),
+      );
+      _registeredMarkerImages.add(name);
+    }
+  }
+
+  Future<void> _drawFocusMarker(MapLibreMapController controller) async {
+    final location = _focusLocation;
+    if (location == null) return;
+    final label = _focusLabel?.trim().isNotEmpty == true
+        ? _focusLabel!.trim()
+        : 'Khu vực đang tìm';
+    final imageName = 'map-focus-${label.hashCode}';
+    if (!_registeredMarkerImages.contains(imageName)) {
+      await controller.addImage(
+        imageName,
+        await _createSchoolMarkerImage(label),
+      );
+      _registeredMarkerImages.add(imageName);
+    }
+    await controller.addSymbol(
+      SymbolOptions(
+        geometry: location,
+        iconImage: imageName,
+        iconSize: .76,
+        iconAnchor: 'bottom',
+        zIndex: 10,
+      ),
+    );
+  }
+
+  void _onSymbolTapped(Symbol symbol) {
+    final room = _roomBySymbolId[symbol.id];
     if (room == null || !mounted) return;
     setState(() => _selectedRoom = room);
+    _renderSignature = '';
+    final query = ref.read(roomMapControllerProvider).query;
+    final rooms =
+        ref
+            .read(roomSearchProvider(query))
+            .asData
+            ?.value
+            .where(_hasCoordinates)
+            .take(50)
+            .toList() ??
+        const <RoomSummary>[];
+    _scheduleMarkerRender(rooms);
   }
+}
+
+String _shortPrice(int price) {
+  final millions = price / 1000000;
+  final value = millions == millions.roundToDouble()
+      ? millions.toStringAsFixed(0)
+      : millions.toStringAsFixed(1).replaceAll('.', ',');
+  return '${value}tr';
+}
+
+String _markerImageName(int price, {required bool selected}) =>
+    'room-price-$price-${selected ? 'selected' : 'normal'}';
+
+Future<Uint8List> _createPriceMarkerImage(Color color, String label) async {
+  const width = 132.0;
+  const height = 80.0;
+  final recorder = ui.PictureRecorder();
+  final canvas = Canvas(recorder);
+  final paint = Paint()..color = color;
+  canvas.drawRRect(
+    RRect.fromRectAndRadius(
+      const Rect.fromLTWH(2, 2, 128, 60),
+      const Radius.circular(21),
+    ),
+    paint,
+  );
+  final path = Path()
+    ..moveTo(54, 61)
+    ..lineTo(66, 79)
+    ..lineTo(78, 61)
+    ..close();
+  canvas.drawPath(path, paint);
+  final painter = TextPainter(
+    text: TextSpan(
+      text: label,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 27,
+        fontWeight: FontWeight.w800,
+      ),
+    ),
+    textDirection: TextDirection.ltr,
+    textAlign: TextAlign.center,
+  )..layout(maxWidth: 124);
+  painter.paint(
+    canvas,
+    Offset((width - painter.width) / 2, 31 - painter.height / 2),
+  );
+  final image = await recorder.endRecording().toImage(
+    width.toInt(),
+    height.toInt(),
+  );
+  final data = await image.toByteData(format: ui.ImageByteFormat.png);
+  image.dispose();
+  return data!.buffer.asUint8List();
+}
+
+Future<Uint8List> _createSchoolMarkerImage(String label) async {
+  const width = 330.0;
+  const height = 94.0;
+  final recorder = ui.PictureRecorder();
+  final canvas = Canvas(recorder);
+  final paint = Paint()..color = const Color(0xFF2478F2);
+  canvas.drawRRect(
+    RRect.fromRectAndRadius(
+      const Rect.fromLTWH(2, 2, 326, 68),
+      const Radius.circular(24),
+    ),
+    paint,
+  );
+  final path = Path()
+    ..moveTo(148, 69)
+    ..lineTo(165, 93)
+    ..lineTo(182, 69)
+    ..close();
+  canvas.drawPath(path, paint);
+  canvas.drawCircle(
+    const Offset(38, 36),
+    25,
+    Paint()..color = const Color(0x33FFFFFF),
+  );
+  final icon = TextPainter(
+    text: TextSpan(
+      text: String.fromCharCode(Icons.school_rounded.codePoint),
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 31,
+        fontFamily: Icons.school_rounded.fontFamily,
+        package: Icons.school_rounded.fontPackage,
+      ),
+    ),
+    textDirection: TextDirection.ltr,
+  )..layout();
+  icon.paint(canvas, Offset(38 - icon.width / 2, 36 - icon.height / 2));
+  final title = TextPainter(
+    text: TextSpan(
+      text: label,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 22,
+        fontWeight: FontWeight.w800,
+      ),
+    ),
+    textDirection: TextDirection.ltr,
+    maxLines: 1,
+    ellipsis: '…',
+  )..layout(maxWidth: 244);
+  title.paint(canvas, Offset(70, 36 - title.height / 2));
+  final image = await recorder.endRecording().toImage(
+    width.toInt(),
+    height.toInt(),
+  );
+  final data = await image.toByteData(format: ui.ImageByteFormat.png);
+  image.dispose();
+  return data!.buffer.asUint8List();
 }
 
 bool _hasCoordinates(RoomSummary room) {
@@ -322,6 +778,379 @@ bool _hasCoordinates(RoomSummary room) {
       latitude <= 90 &&
       longitude >= -180 &&
       longitude <= 180;
+}
+
+class _MapSearchBar extends StatelessWidget {
+  const _MapSearchBar({
+    required this.label,
+    required this.onBack,
+    required this.onSearch,
+    required this.onFilter,
+  });
+
+  final String? label;
+  final VoidCallback onBack;
+  final VoidCallback onSearch;
+  final VoidCallback onFilter;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      _MapButton(
+        icon: Icons.arrow_back_rounded,
+        tooltip: 'Quay lại',
+        onTap: onBack,
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: Material(
+          color: Colors.white,
+          elevation: 5,
+          shadowColor: Colors.black26,
+          borderRadius: BorderRadius.circular(25),
+          child: InkWell(
+            onTap: onSearch,
+            borderRadius: BorderRadius.circular(25),
+            child: SizedBox(
+              height: 48,
+              child: Row(
+                children: [
+                  SizedBox(width: 15),
+                  Icon(
+                    Icons.search_rounded,
+                    size: 21,
+                    color: Color(0xFF687571),
+                  ),
+                  SizedBox(width: 9),
+                  Expanded(
+                    child: Text(
+                      label?.trim().isNotEmpty == true
+                          ? label!
+                          : 'Tìm khu vực, trường học...',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: Color(0xFF87928F), fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(width: 8),
+      _MapButton(icon: Icons.tune_rounded, tooltip: 'Bộ lọc', onTap: onFilter),
+    ],
+  );
+}
+
+class _SearchThisAreaButton extends StatelessWidget {
+  const _SearchThisAreaButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: const Color(0xFF009B80),
+    elevation: 7,
+    shadowColor: Colors.black26,
+    borderRadius: BorderRadius.circular(24),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.search_rounded, color: Colors.white, size: 20),
+            SizedBox(width: 7),
+            Text(
+              'Tìm kiếm khu vực này',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _LocationPermissionCard extends StatelessWidget {
+  const _LocationPermissionCard({required this.onLater, required this.onAllow});
+
+  final VoidCallback onLater;
+  final VoidCallback onAllow;
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    top: false,
+    child: Container(
+      margin: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x26000000),
+            blurRadius: 24,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE6F7F3),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.location_on_outlined,
+                  color: Color(0xFF009B80),
+                  size: 27,
+                ),
+              ),
+              const SizedBox(width: 13),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Cho phép truy cập vị trí',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    SizedBox(height: 5),
+                    Text(
+                      'Để tìm phòng xung quanh bạn dễ dàng hơn.',
+                      style: TextStyle(
+                        color: Color(0xFF6C7775),
+                        fontSize: 13,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 17),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: FilledButton(
+              onPressed: onAllow,
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF00A98F),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: const Text(
+                'Cho phép truy cập',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: onLater,
+            child: const Text(
+              'Để sau, dùng vị trí Hà Nội',
+              style: TextStyle(color: Color(0xFF65716F)),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _MapLoadingOverlay extends StatelessWidget {
+  const _MapLoadingOverlay();
+
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+    color: const Color(0x52000000),
+    child: Center(
+      child: Container(
+        width: 230,
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 25),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: const [
+            BoxShadow(color: Color(0x22000000), blurRadius: 20),
+          ],
+        ),
+        child: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 36,
+              height: 36,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                color: Color(0xFF00A98F),
+              ),
+            ),
+            SizedBox(height: 17),
+            Text(
+              'Đang tìm phòng quanh khu vực này...',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+            ),
+            SizedBox(height: 6),
+            Text(
+              'Vui lòng đợi trong giây lát.',
+              style: TextStyle(color: Color(0xFF7A8583), fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _EmptyMapResults extends StatelessWidget {
+  const _EmptyMapResults({
+    required this.radiusMeters,
+    required this.onExpandRadius,
+  });
+
+  final int radiusMeters;
+  final VoidCallback onExpandRadius;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Container(
+      constraints: const BoxConstraints(maxWidth: 310),
+      padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.96),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x24000000),
+            blurRadius: 20,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.manage_search_rounded,
+            size: 48,
+            color: Color(0xFF60706D),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Không tìm thấy phòng trong khu vực này',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 7),
+          Text(
+            'Thử mở rộng bán kính ${_formatRadius(radiusMeters)} hoặc thay đổi bộ lọc để xem thêm kết quả nhé.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFF6F7B79),
+              height: 1.4,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 17),
+          OutlinedButton.icon(
+            onPressed: onExpandRadius,
+            icon: const Icon(Icons.my_location_rounded, size: 18),
+            label: const Text('Mở rộng bán kính'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF008E79),
+              side: const BorderSide(color: Color(0xFF9EDDD2)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(22),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  static String _formatRadius(int meters) {
+    if (meters >= 1000) return '${meters ~/ 1000} km';
+    return '$meters m';
+  }
+}
+
+class _MapErrorBanner extends StatelessWidget {
+  const _MapErrorBanner({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: const Color(0xFFFFF2F1),
+    elevation: 4,
+    borderRadius: BorderRadius.circular(16),
+    child: ListTile(
+      dense: true,
+      leading: const Icon(Icons.wifi_off_rounded, color: Colors.redAccent),
+      title: const Text(
+        'Không thể tải phòng trong khu vực này.',
+        style: TextStyle(fontWeight: FontWeight.w700),
+      ),
+      trailing: TextButton(onPressed: onRetry, child: const Text('Thử lại')),
+    ),
+  );
+}
+
+class _ShowListButton extends StatelessWidget {
+  const _ShowListButton({required this.count, required this.onTap});
+
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Colors.white,
+    elevation: 8,
+    shadowColor: Colors.black26,
+    borderRadius: BorderRadius.circular(26),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(26),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.format_list_bulleted_rounded, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              'Xem danh sách ($count phòng)',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _MapButton extends StatelessWidget {
@@ -372,110 +1201,6 @@ class _LocationButton extends StatelessWidget {
                 )
               : const Icon(Icons.my_location_rounded, color: Color(0xFF2878FF)),
         ),
-      ),
-    ),
-  );
-}
-
-class _MapViewSelector extends StatelessWidget {
-  const _MapViewSelector({required this.onListTap});
-
-  final VoidCallback onListTap;
-
-  @override
-  Widget build(BuildContext context) => Material(
-    color: Colors.white,
-    elevation: 4,
-    shadowColor: Colors.black26,
-    borderRadius: BorderRadius.circular(22),
-    child: Container(
-      height: 40,
-      padding: const EdgeInsets.all(3),
-      child: Row(
-        children: [
-          Expanded(
-            child: _MapViewOption(
-              icon: Icons.format_list_bulleted_rounded,
-              label: 'Danh sách',
-              selected: false,
-              onTap: onListTap,
-            ),
-          ),
-          const Expanded(
-            child: _MapViewOption(
-              icon: Icons.map_outlined,
-              label: 'Bản đồ',
-              selected: true,
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-class _MapViewOption extends StatelessWidget {
-  const _MapViewOption({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) => Material(
-    color: selected ? const Color(0xFF008E79) : Colors.transparent,
-    borderRadius: BorderRadius.circular(18),
-    child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            size: 16,
-            color: selected ? Colors.white : const Color(0xFF566763),
-          ),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: selected ? Colors.white : const Color(0xFF566763),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-class _RoomCount extends StatelessWidget {
-  const _RoomCount({required this.loading, required this.count});
-
-  final bool loading;
-  final int? count;
-
-  @override
-  Widget build(BuildContext context) => Material(
-    color: Colors.white,
-    elevation: 4,
-    shadowColor: Colors.black26,
-    borderRadius: BorderRadius.circular(24),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      child: Text(
-        loading ? 'Đang tải phòng...' : '${count ?? 0} phòng trên bản đồ',
-        textAlign: TextAlign.center,
-        maxLines: 1,
-        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
       ),
     ),
   );
@@ -585,6 +1310,569 @@ class _ImageFallback extends StatelessWidget {
   Widget build(BuildContext context) => const ColoredBox(
     color: Color(0xFFE4ECEA),
     child: Center(child: Icon(Icons.home_work_outlined, size: 36)),
+  );
+}
+
+class _MapPlaceResult {
+  const _MapPlaceResult({required this.label, required this.location});
+
+  final String label;
+  final LatLng location;
+}
+
+class _MapPlaceSearchSheet extends ConsumerStatefulWidget {
+  const _MapPlaceSearchSheet();
+
+  @override
+  ConsumerState<_MapPlaceSearchSheet> createState() =>
+      _MapPlaceSearchSheetState();
+}
+
+class _MapPlaceSearchSheetState extends ConsumerState<_MapPlaceSearchSheet> {
+  final _controller = TextEditingController();
+  final _focusNode = FocusNode();
+  Timer? _debounce;
+  List<GoongPlacePrediction> _suggestions = const [];
+  bool _loading = false;
+  String? _error;
+  int _requestId = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focusNode.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _onChanged(String rawValue) {
+    _debounce?.cancel();
+    final value = rawValue.trim();
+    if (value.length < 2) {
+      _requestId++;
+      setState(() {
+        _loading = false;
+        _error = null;
+        _suggestions = const [];
+      });
+      return;
+    }
+    _debounce = Timer(const Duration(milliseconds: 350), () {
+      _loadSuggestions(value);
+    });
+  }
+
+  Future<void> _loadSuggestions(String value) async {
+    final requestId = ++_requestId;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final suggestions = await ref
+          .read(goongLocationDataSourceProvider)
+          .autocomplete(input: value, limit: 6);
+      if (!mounted || requestId != _requestId) return;
+      setState(() {
+        _loading = false;
+        _suggestions = suggestions;
+        _error = suggestions.isEmpty
+            ? 'Không tìm thấy địa điểm phù hợp.'
+            : null;
+      });
+    } catch (_) {
+      if (!mounted || requestId != _requestId) return;
+      setState(() {
+        _loading = false;
+        _suggestions = const [];
+        _error = 'Không tải được gợi ý. Hãy kiểm tra kết nối và thử lại.';
+      });
+    }
+  }
+
+  Future<void> _select(GoongPlacePrediction prediction) async {
+    _debounce?.cancel();
+    final requestId = ++_requestId;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final detail = await ref
+          .read(goongLocationDataSourceProvider)
+          .placeDetail(placeId: prediction.placeId);
+      if (!mounted || requestId != _requestId) return;
+      Navigator.pop(
+        context,
+        _MapPlaceResult(
+          label: prediction.mainText,
+          location: LatLng(detail.latitude, detail.longitude),
+        ),
+      );
+    } catch (_) {
+      if (!mounted || requestId != _requestId) return;
+      setState(() {
+        _loading = false;
+        _error = 'Không lấy được vị trí của địa điểm này.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: const Color(0xFFF9FBFA),
+    borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+    clipBehavior: Clip.antiAlias,
+    child: AnimatedPadding(
+      duration: const Duration(milliseconds: 180),
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SizedBox(
+        height: MediaQuery.sizeOf(context).height * .72,
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 42,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFD1DBD8),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 14, 10, 10),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Tìm khu vực, trường học',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: TextField(
+                controller: _controller,
+                focusNode: _focusNode,
+                onChanged: _onChanged,
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  hintText: 'Nhập trường đại học, quận hoặc địa chỉ...',
+                  prefixIcon: const Icon(
+                    Icons.search_rounded,
+                    color: Color(0xFF008E79),
+                  ),
+                  suffixIcon: _controller.text.isEmpty
+                      ? null
+                      : IconButton(
+                          onPressed: () {
+                            _controller.clear();
+                            _onChanged('');
+                          },
+                          icon: const Icon(Icons.close_rounded, size: 19),
+                        ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(17),
+                    borderSide: const BorderSide(color: Color(0xFFDDE7E4)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(17),
+                    borderSide: const BorderSide(color: Color(0xFFDDE7E4)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(17),
+                    borderSide: const BorderSide(
+                      color: Color(0xFF00A884),
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            if (_loading)
+              const LinearProgressIndicator(
+                minHeight: 2,
+                color: Color(0xFF00A884),
+                backgroundColor: Colors.transparent,
+              )
+            else
+              const SizedBox(height: 2),
+            if (_error case final error?)
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Text(
+                  error,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Color(0xFF687571)),
+                ),
+              )
+            else if (_suggestions.isEmpty)
+              const Expanded(
+                child: Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(28),
+                    child: Text(
+                      'Nhập ít nhất 2 ký tự để nhận gợi ý địa điểm từ Goong.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Color(0xFF75827E)),
+                    ),
+                  ),
+                ),
+              )
+            else
+              Expanded(
+                child: ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 20),
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  itemCount: _suggestions.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (_, index) {
+                    final prediction = _suggestions[index];
+                    return ListTile(
+                      onTap: _loading ? null : () => _select(prediction),
+                      leading: const CircleAvatar(
+                        backgroundColor: Color(0xFFE2F5F0),
+                        foregroundColor: Color(0xFF008E79),
+                        child: Icon(Icons.location_on_outlined),
+                      ),
+                      title: Text(
+                        prediction.mainText,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      subtitle: prediction.secondaryText.isEmpty
+                          ? null
+                          : Text(
+                              prediction.secondaryText,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                      trailing: const Icon(Icons.north_west_rounded, size: 18),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _MapFilterSheet extends StatefulWidget {
+  const _MapFilterSheet({required this.query, required this.amenities});
+
+  final RoomSearchQuery query;
+  final List<Amenity> amenities;
+
+  @override
+  State<_MapFilterSheet> createState() => _MapFilterSheetState();
+}
+
+class _MapFilterSheetState extends State<_MapFilterSheet> {
+  static const _roomTypes = <(String, String)>[
+    ('ROOM_SINGLE', 'Phòng đơn'),
+    ('ROOM_SHARED', 'Ở ghép'),
+    ('STUDIO', 'Studio'),
+    ('ONE_BEDROOM', '1 phòng ngủ'),
+    ('WHOLE_HOUSE', 'Nguyên căn'),
+  ];
+
+  late RangeValues _price;
+  late RangeValues _area;
+  String? _roomType;
+  late Set<String> _amenityCodes;
+
+  @override
+  void initState() {
+    super.initState();
+    _price = RangeValues(
+      (widget.query.minPrice ?? 0) / 1000000,
+      (widget.query.maxPrice ?? 10000000) / 1000000,
+    );
+    _area = RangeValues(
+      widget.query.minArea ?? 10,
+      widget.query.maxArea ?? 100,
+    );
+    _roomType = widget.query.roomType;
+    _amenityCodes = widget.query.amenityCodes.toSet();
+  }
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Colors.white,
+    borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+    clipBehavior: Clip.antiAlias,
+    child: SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        12,
+        20,
+        MediaQuery.paddingOf(context).bottom + 16,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 42,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFD5DEDC),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Bộ lọc tìm phòng',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                ),
+              ),
+              TextButton(onPressed: _reset, child: const Text('Đặt lại')),
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _FilterTitle(
+            title: 'Khoảng giá (triệu/tháng)',
+            value:
+                '${_price.start.toStringAsFixed(0)} - ${_price.end.toStringAsFixed(0)} triệu',
+          ),
+          RangeSlider(
+            values: _price,
+            min: 0,
+            max: 10,
+            divisions: 20,
+            activeColor: const Color(0xFF00A884),
+            labels: RangeLabels(
+              '${_price.start.toStringAsFixed(1)}tr',
+              '${_price.end.toStringAsFixed(1)}tr',
+            ),
+            onChanged: (value) => setState(() => _price = value),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Loại phòng',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ChoiceChip(
+                label: const Text('Tất cả'),
+                selected: _roomType == null,
+                onSelected: (_) => setState(() => _roomType = null),
+              ),
+              ..._roomTypes.map(
+                (item) => ChoiceChip(
+                  label: Text(item.$2),
+                  selected: _roomType == item.$1,
+                  onSelected: (_) => setState(() => _roomType = item.$1),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          _FilterTitle(
+            title: 'Diện tích (m²)',
+            value:
+                '${_area.start.toStringAsFixed(0)} - ${_area.end.toStringAsFixed(0)} m²',
+          ),
+          RangeSlider(
+            values: _area,
+            min: 10,
+            max: 100,
+            divisions: 18,
+            activeColor: const Color(0xFF00A884),
+            labels: RangeLabels(
+              '${_area.start.toStringAsFixed(0)}m²',
+              '${_area.end.toStringAsFixed(0)}m²',
+            ),
+            onChanged: (value) => setState(() => _area = value),
+          ),
+          if (widget.amenities.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            const Text(
+              'Tiện ích',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: widget.amenities
+                  .map((amenity) {
+                    final selected = _amenityCodes.contains(amenity.code);
+                    return FilterChip(
+                      avatar: Icon(
+                        _amenityIcon(amenity.code),
+                        size: 17,
+                        color: selected
+                            ? const Color(0xFF008E79)
+                            : const Color(0xFF60706C),
+                      ),
+                      label: Text(amenity.name),
+                      selected: selected,
+                      showCheckmark: false,
+                      selectedColor: const Color(0xFFDDF5EF),
+                      onSelected: (_) {
+                        setState(() {
+                          if (selected) {
+                            _amenityCodes.remove(amenity.code);
+                          } else {
+                            _amenityCodes.add(amenity.code);
+                          }
+                        });
+                      },
+                    );
+                  })
+                  .toList(growable: false),
+            ),
+          ],
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF00A884),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              onPressed: _apply,
+              child: const Text(
+                'Áp dụng bộ lọc',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  void _reset() {
+    setState(() {
+      _price = const RangeValues(0, 10);
+      _area = const RangeValues(10, 100);
+      _roomType = null;
+      _amenityCodes.clear();
+    });
+  }
+
+  void _apply() {
+    Navigator.pop(
+      context,
+      widget.query.copyWith(
+        clearPrice: true,
+        minPrice: _price.start <= 0 ? null : (_price.start * 1000000).round(),
+        maxPrice: _price.end >= 10 ? null : (_price.end * 1000000).round(),
+        clearArea: true,
+        minArea: _area.start <= 10 ? null : _area.start,
+        maxArea: _area.end >= 100 ? null : _area.end,
+        roomType: _roomType,
+        clearRoomType: _roomType == null,
+        amenityCodes: _amenityCodes.toList(growable: false),
+        page: 1,
+      ),
+    );
+  }
+}
+
+IconData _amenityIcon(String code) {
+  final normalized = code.toUpperCase();
+  if (normalized.contains('WIFI')) return Icons.wifi_rounded;
+  if (normalized.contains('AIR') || normalized.contains('CONDITION')) {
+    return Icons.ac_unit_rounded;
+  }
+  if (normalized.contains('WASH')) return Icons.local_laundry_service_outlined;
+  if (normalized.contains('BED')) return Icons.bed_outlined;
+  if (normalized.contains('BALCON')) return Icons.balcony_outlined;
+  if (normalized.contains('DESK')) return Icons.desk_outlined;
+  if (normalized.contains('FRIDGE')) return Icons.kitchen_outlined;
+  if (normalized.contains('PARK')) return Icons.local_parking_rounded;
+  return Icons.check_circle_outline_rounded;
+}
+
+class _FilterTitle extends StatelessWidget {
+  const _FilterTitle({required this.title, required this.value});
+
+  final String title;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Expanded(
+        child: Text(
+          title,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+        ),
+      ),
+      DecoratedBox(
+        decoration: BoxDecoration(
+          color: const Color(0xFFE9F7F3),
+          borderRadius: BorderRadius.circular(9),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+          child: Text(
+            value,
+            style: const TextStyle(
+              color: Color(0xFF008E79),
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+class _MapInitializingScreen extends StatelessWidget {
+  const _MapInitializingScreen();
+
+  @override
+  Widget build(BuildContext context) => const Scaffold(
+    backgroundColor: Color(0xFFF3F7F6),
+    body: Center(
+      child: CircularProgressIndicator(
+        strokeWidth: 2.5,
+        color: Color(0xFF00A884),
+      ),
+    ),
   );
 }
 

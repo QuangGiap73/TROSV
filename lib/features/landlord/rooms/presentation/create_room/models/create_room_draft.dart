@@ -247,6 +247,11 @@ class CreateRoomDraft extends ChangeNotifier {
     notifyListeners();
   }
 
+  void removeVideo() {
+    videos.clear();
+    notifyListeners();
+  }
+
   void addSpace(RoomSpaceDraft space) {
     spaces.add(space);
     notifyListeners();

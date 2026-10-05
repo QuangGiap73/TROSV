@@ -154,6 +154,7 @@ class HomeScreen extends ConsumerWidget {
       path: '/search',
       queryParameters: {
         'title': 'Trọ quanh ${target.university.name}',
+        'focus': target.university.name,
         'lat': target.latitude.toString(),
         'lng': target.longitude.toString(),
         'radius': target.university.defaultRadiusMeters.toString(),

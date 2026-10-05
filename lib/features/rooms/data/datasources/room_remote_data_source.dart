@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 
 import '../../domain/entities/room_detail.dart';
+import '../../domain/entities/room_report.dart';
+import '../../domain/entities/room_trust.dart';
 import '../../domain/entities/room_summary.dart';
 import '../../domain/entities/room_search_query.dart';
 
@@ -75,5 +77,33 @@ class RoomRemoteDataSource {
     if (response.data?['success'] != true) {
       throw const FormatException('Không thể bỏ phòng yêu thích.');
     }
+  }
+
+  Future<RoomReport> reportRoom(
+    String roomId,
+    RoomReportRequest request,
+  ) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/rooms/$roomId/reports',
+      data: request.toJson(),
+    );
+    final envelope = response.data;
+    final data = envelope?['data'];
+    if (envelope?['success'] != true || data is! Map<String, dynamic>) {
+      throw const FormatException('Dữ liệu báo cáo phòng không hợp lệ.');
+    }
+    return RoomReport.fromJson(data);
+  }
+
+  Future<RoomTrust> getRoomTrust(String roomId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/rooms/$roomId/trust-score',
+    );
+    final envelope = response.data;
+    final data = envelope?['data'];
+    if (envelope?['success'] != true || data is! Map<String, dynamic>) {
+      throw const FormatException('Dữ liệu mức độ tin cậy không hợp lệ.');
+    }
+    return RoomTrust.fromJson(data);
   }
 }
