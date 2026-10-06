@@ -134,14 +134,19 @@ class _RoommatePostsScreenState extends ConsumerState<RoommatePostsScreen> {
         ),
 
         // Mockup dùng nút + tròn thay vì FAB extended.
-        floatingActionButton: FloatingActionButton(
-          heroTag: 'create-roommate-post',
-          backgroundColor: _green,
-          foregroundColor: Colors.white,
-          elevation: 4,
-          shape: const CircleBorder(),
-          onPressed: () => context.push('/roommate/create'),
-          child: const Icon(Icons.add_rounded, size: 31),
+        floatingActionButton: Padding(
+          // RoommatePostsScreen nằm trong AppShell. Nâng FAB khỏi thanh tab
+          // của shell để nút tạo tin không bị che trên thiết bị thật.
+          padding: const EdgeInsets.only(bottom: 72),
+          child: FloatingActionButton(
+            heroTag: 'create-roommate-post',
+            backgroundColor: _green,
+            foregroundColor: Colors.white,
+            elevation: 4,
+            shape: const CircleBorder(),
+            onPressed: () => context.push('/roommate/create'),
+            child: const Icon(Icons.add_rounded, size: 31),
+          ),
         ),
       ),
     );
@@ -210,15 +215,10 @@ class _RoommatePostsScreenState extends ConsumerState<RoommatePostsScreen> {
   Future<void> _openFilterSheet() async {
     final current = ref.read(roommateFilterProvider);
 
-    final districtController = TextEditingController(
-      text: current.district ?? '',
-    );
-    final minBudgetController = TextEditingController(
-      text: current.minBudget?.toString() ?? '',
-    );
-    final maxBudgetController = TextEditingController(
-      text: current.maxBudget?.toString() ?? '',
-    );
+    var districtText = current.district ?? '';
+    var minBudgetText = current.minBudget?.toString() ?? '';
+    var maxBudgetText = current.maxBudget?.toString() ?? '';
+    var formVersion = 0;
 
     String? selectedGender = current.gender;
     String? selectedPostType = current.postType;
@@ -274,13 +274,13 @@ class _RoommatePostsScreenState extends ConsumerState<RoommatePostsScreen> {
                         ),
                         TextButton(
                           onPressed: () {
-                            districtController.clear();
-                            minBudgetController.clear();
-                            maxBudgetController.clear();
-
                             setSheetState(() {
+                              districtText = '';
+                              minBudgetText = '';
+                              maxBudgetText = '';
                               selectedGender = null;
                               selectedPostType = null;
+                              formVersion++;
                             });
                           },
                           child: const Text(
@@ -328,8 +328,10 @@ class _RoommatePostsScreenState extends ConsumerState<RoommatePostsScreen> {
 
                     const SizedBox(height: 20),
                     const _FilterTitle('Khu vực'),
-                    TextField(
-                      controller: districtController,
+                    TextFormField(
+                      key: ValueKey('district-$formVersion'),
+                      initialValue: districtText,
+                      onChanged: (value) => districtText = value,
                       textInputAction: TextInputAction.next,
                       decoration: _inputDecoration(
                         hint: 'Nhập quận / huyện',
@@ -342,8 +344,10 @@ class _RoommatePostsScreenState extends ConsumerState<RoommatePostsScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: TextField(
-                            controller: minBudgetController,
+                          child: TextFormField(
+                            key: ValueKey('min-budget-$formVersion'),
+                            initialValue: minBudgetText,
+                            onChanged: (value) => minBudgetText = value,
                             keyboardType: TextInputType.number,
                             textInputAction: TextInputAction.next,
                             decoration: _inputDecoration(
@@ -363,8 +367,10 @@ class _RoommatePostsScreenState extends ConsumerState<RoommatePostsScreen> {
                           ),
                         ),
                         Expanded(
-                          child: TextField(
-                            controller: maxBudgetController,
+                          child: TextFormField(
+                            key: ValueKey('max-budget-$formVersion'),
+                            initialValue: maxBudgetText,
+                            onChanged: (value) => maxBudgetText = value,
                             keyboardType: TextInputType.number,
                             decoration: _inputDecoration(
                               hint: 'Đến',
@@ -413,9 +419,9 @@ class _RoommatePostsScreenState extends ConsumerState<RoommatePostsScreen> {
                           Navigator.pop(
                             sheetContext,
                             RoommateFilter(
-                              district: _nullIfEmpty(districtController.text),
-                              minBudget: _parseMoney(minBudgetController.text),
-                              maxBudget: _parseMoney(maxBudgetController.text),
+                              district: _nullIfEmpty(districtText),
+                              minBudget: _parseMoney(minBudgetText),
+                              maxBudget: _parseMoney(maxBudgetText),
                               gender: selectedGender,
                               postType: selectedPostType,
                               universityOrWork: current.universityOrWork,
@@ -447,10 +453,6 @@ class _RoommatePostsScreenState extends ConsumerState<RoommatePostsScreen> {
         );
       },
     );
-
-    districtController.dispose();
-    minBudgetController.dispose();
-    maxBudgetController.dispose();
 
     if (result != null) {
       ref.read(roommateFilterProvider.notifier).update(result);

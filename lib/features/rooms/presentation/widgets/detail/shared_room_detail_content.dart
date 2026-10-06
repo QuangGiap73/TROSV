@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../core/utils/currency_formatter.dart';
 import '../network_video_player.dart';
@@ -13,6 +14,8 @@ class SharedRoomDetailData {
     required this.areaM2,
     required this.maxPeople,
     required this.address,
+    this.latitude,
+    this.longitude,
     required this.imageUrls,
     this.videoUrls = const [],
     required this.amenities,
@@ -29,6 +32,7 @@ class SharedRoomDetailData {
   final int priceMonthly, depositAmount, maxPeople, viewsCount;
   final int? estimatedMonthlyCost;
   final double areaM2;
+  final double? latitude, longitude;
   final int? floor;
   final List<String> imageUrls, amenities;
   final List<String> videoUrls;
@@ -125,7 +129,11 @@ class SharedRoomDetailContent extends StatelessWidget {
         ),
         if (room.address.isNotEmpty) ...[
           const SizedBox(height: 12),
-          _Location(address: room.address),
+          _Location(
+            address: room.address,
+            latitude: room.latitude,
+            longitude: room.longitude,
+          ),
         ],
         if (room.rejectionReason?.trim().isNotEmpty == true) ...[
           const SizedBox(height: 12),
@@ -249,7 +257,11 @@ class SharedRoomDetailTabView extends StatelessWidget {
           ),
           if (room.address.isNotEmpty) ...[
             const SizedBox(height: 12),
-            _Location(address: room.address),
+            _Location(
+              address: room.address,
+              latitude: room.latitude,
+              longitude: room.longitude,
+            ),
           ],
           if (room.rejectionReason?.trim().isNotEmpty == true) ...[
             const SizedBox(height: 12),
@@ -375,10 +387,7 @@ class _VideoSection extends StatelessWidget {
     child: Column(
       children: [
         for (var index = 0; index < urls.length; index++) ...[
-          NetworkVideoPlayer(
-            key: ValueKey(urls[index]),
-            url: urls[index],
-          ),
+          NetworkVideoPlayer(key: ValueKey(urls[index]), url: urls[index]),
           if (index < urls.length - 1) const SizedBox(height: 12),
         ],
       ],
@@ -454,10 +463,32 @@ class _GalleryState extends State<_Gallery> {
 }
 
 class _Location extends StatelessWidget {
-  const _Location({required this.address});
+  const _Location({required this.address, this.latitude, this.longitude});
   final String address;
+  final double? latitude, longitude;
+
+  Future<void> _openGoogleMaps(BuildContext context) async {
+    final query = latitude != null && longitude != null
+        ? '$latitude,$longitude'
+        : address;
+    final uri = Uri.https('www.google.com', '/maps/search/', {
+      'api': '1',
+      'query': query,
+    });
+    try {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (opened || !context.mounted) return;
+    } catch (_) {
+      if (!context.mounted) return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Không thể mở Google Maps.')));
+  }
+
   @override
   Widget build(BuildContext context) => _Card(
+    onTap: () => _openGoogleMaps(context),
     color: const Color(0xFFF0FAF7),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -481,6 +512,14 @@ class _Location extends StatelessWidget {
                 style: const TextStyle(height: 1.4, color: Color(0xFF687571)),
               ),
             ],
+          ),
+        ),
+        const Padding(
+          padding: EdgeInsets.only(top: 10),
+          child: Icon(
+            Icons.open_in_new_rounded,
+            size: 19,
+            color: Color(0xFF00856F),
           ),
         ),
       ],
@@ -636,18 +675,26 @@ class _Section extends StatelessWidget {
 }
 
 class _Card extends StatelessWidget {
-  const _Card({required this.child, this.color = Colors.white});
+  const _Card({required this.child, this.color = Colors.white, this.onTap});
   final Widget child;
   final Color color;
+  final VoidCallback? onTap;
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(13),
-    decoration: BoxDecoration(
-      color: color,
+  Widget build(BuildContext context) => Material(
+    color: Colors.transparent,
+    child: InkWell(
       borderRadius: BorderRadius.circular(17),
-      border: Border.all(color: const Color(0xFFDCE6E3)),
+      onTap: onTap,
+      child: Ink(
+        padding: const EdgeInsets.all(13),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(17),
+          border: Border.all(color: const Color(0xFFDCE6E3)),
+        ),
+        child: child,
+      ),
     ),
-    child: child,
   );
 }
 

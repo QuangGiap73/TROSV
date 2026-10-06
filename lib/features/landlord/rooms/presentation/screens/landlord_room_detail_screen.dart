@@ -132,6 +132,8 @@ SharedRoomDetailData _landlordDetailViewData(LandlordRoomDetail room) {
     maxPeople: room.maxPeople,
     floor: room.floor,
     address: room.fullAddress,
+    latitude: room.property?.latitude,
+    longitude: room.property?.longitude,
     imageUrls: room.images
         .map((item) => item.displayUrl)
         .whereType<String>()

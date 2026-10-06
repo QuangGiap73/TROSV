@@ -21,6 +21,8 @@ class RoomDetail {
     this.lastConfirmedAt,
     this.publishedAt,
     this.landlordName,
+    this.latitude,
+    this.longitude,
     this.viewsCount = 0,
   });
 
@@ -80,6 +82,8 @@ class RoomDetail {
       ),
       publishedAt: DateTime.tryParse(json['published_at'] as String? ?? ''),
       landlordName: json['landlord_name'] as String?,
+      latitude: (property?['latitude'] as num?)?.toDouble(),
+      longitude: (property?['longitude'] as num?)?.toDouble(),
       viewsCount: (json['views_count'] as num?)?.toInt() ?? 0,
     );
   }
@@ -105,6 +109,7 @@ class RoomDetail {
   final DateTime? lastConfirmedAt;
   final DateTime? publishedAt;
   final String? landlordName;
+  final double? latitude, longitude;
   final int viewsCount;
 }
 

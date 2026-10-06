@@ -165,6 +165,8 @@ SharedRoomDetailData _tenantViewData(RoomDetail room) {
     maxPeople: room.maxPeople,
     floor: room.floor,
     address: room.address,
+    latitude: room.latitude,
+    longitude: room.longitude,
     imageUrls: room.imageUrls,
     videoUrls: room.videoUrls,
     amenities: room.amenities,
