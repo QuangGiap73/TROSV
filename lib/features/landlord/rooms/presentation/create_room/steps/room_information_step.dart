@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/create_room_draft.dart';
 import '../widgets/create_room_step_layout.dart';
@@ -54,7 +55,7 @@ class _RoomInformationStepState extends State<RoomInformationStep> {
             required: true,
             prefixIcon: Icons.edit_outlined,
             initialValue: draft.title,
-            hint: 'Ví dụ: Phòng khép kín, đầy đủ nội thất',
+            hint: 'VD: Phòng khép kín, đầy đủ nội thất',
             onChanged: (value) {
               draft.title = value;
               draft.changed();
@@ -81,7 +82,7 @@ class _RoomInformationStepState extends State<RoomInformationStep> {
                   required: true,
                   prefixIcon: Icons.square_foot_outlined,
                   initialValue: draft.areaM2?.toString(),
-                  hint: 'Ví dụ: 25',
+                  hint: 'VD: 25',
                   suffixText: 'm²',
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
@@ -98,7 +99,7 @@ class _RoomInformationStepState extends State<RoomInformationStep> {
                   label: 'Tầng',
                   prefixIcon: Icons.stairs_outlined,
                   initialValue: draft.floor?.toString(),
-                  hint: 'Ví dụ: 3',
+                  hint: 'VD: 3',
                   suffixText: 'tầng',
                   keyboardType: TextInputType.number,
                   onChanged: (value) {
@@ -113,7 +114,7 @@ class _RoomInformationStepState extends State<RoomInformationStep> {
             label: 'Số người tối đa',
             prefixIcon: Icons.people_outline,
             initialValue: draft.maxPeople.toString(),
-            hint: 'Ví dụ: 2',
+            hint: 'VD: 2',
             suffixText: 'người',
             keyboardType: TextInputType.number,
             onChanged: (value) {
@@ -125,10 +126,11 @@ class _RoomInformationStepState extends State<RoomInformationStep> {
             label: 'Giá thuê',
             required: true,
             prefixIcon: Icons.monetization_on_outlined,
-            initialValue: draft.priceMonthly?.toString(),
-            hint: 'Ví dụ: 3500000',
+            initialValue: _displayMoney(draft.priceMonthly),
+            hint: 'VD: 3.500.000',
             suffixText: 'đ/tháng',
             keyboardType: TextInputType.number,
+            inputFormatters: const [_VietnameseMoneyInputFormatter()],
             onChanged: (value) {
               draft.priceMonthly = int.tryParse(_digits(value));
               draft.changed();
@@ -141,12 +143,11 @@ class _RoomInformationStepState extends State<RoomInformationStep> {
                 child: CreateRoomTextField(
                   label: 'Tiền cọc',
                   prefixIcon: Icons.account_balance_wallet_outlined,
-                  initialValue: draft.depositAmount == 0
-                      ? null
-                      : draft.depositAmount.toString(),
-                  hint: 'Ví dụ: 1000000',
+                  initialValue: _displayMoney(draft.depositAmount),
+                  hint: 'VD: 1.000.000',
                   suffixText: 'đồng',
                   keyboardType: TextInputType.number,
+                  inputFormatters: const [_VietnameseMoneyInputFormatter()],
                   onChanged: (value) {
                     draft.depositAmount = int.tryParse(_digits(value)) ?? 0;
                     draft.changed();
@@ -399,3 +400,40 @@ class _FieldLabel extends StatelessWidget {
 }
 
 String _digits(String value) => value.replaceAll(RegExp(r'[^0-9]'), '');
+
+String? _displayMoney(int? value) {
+  if (value == null || value <= 0) return null;
+  return _formatMoney(value);
+}
+
+String _formatMoney(int value) {
+  final digits = value.toString();
+  final output = StringBuffer();
+  for (var index = 0; index < digits.length; index++) {
+    if (index > 0 && (digits.length - index) % 3 == 0) output.write('.');
+    output.write(digits[index]);
+  }
+  return output.toString();
+}
+
+class _VietnameseMoneyInputFormatter extends TextInputFormatter {
+  const _VietnameseMoneyInputFormatter();
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = _digits(newValue.text);
+    if (digits.isEmpty) return const TextEditingValue();
+
+    final value = int.tryParse(digits);
+    if (value == null) return oldValue;
+
+    final formatted = _formatMoney(value);
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}

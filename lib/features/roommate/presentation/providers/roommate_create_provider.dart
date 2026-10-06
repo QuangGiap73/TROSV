@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/models/roommate_create_draft.dart';
@@ -60,7 +62,7 @@ final submitRoommatePostProvider =
 
 class SubmitRoommatePostController extends AsyncNotifier<String?> {
   @override
-  Future<String?> build() async => null;
+  FutureOr<String?> build() => null;
 
   Future<String?> submit() async {
     if (state.isLoading) return null;

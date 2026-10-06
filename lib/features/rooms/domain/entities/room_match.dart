@@ -16,11 +16,17 @@ class RoomMatch {
       throw const FormatException('Thông tin phòng phù hợp không hợp lệ.');
     }
 
+    final estimatedMonthlyCost =
+        (json['estimated_monthly_cost'] as num?)?.toInt() ?? 0;
+
     return RoomMatch(
-      room: RoomSummary.fromJson(roomJson),
+      room: RoomSummary.fromJson({
+        ...roomJson,
+        if (!roomJson.containsKey('estimated_monthly_cost'))
+          'estimated_monthly_cost': estimatedMonthlyCost,
+      }),
       matchScore: (json['match_score'] as num?)?.toInt() ?? 0,
-      estimatedMonthlyCost:
-          (json['estimated_monthly_cost'] as num?)?.toInt() ?? 0,
+      estimatedMonthlyCost: estimatedMonthlyCost,
       reasons: (json['reasons'] as List<dynamic>? ?? const [])
           .whereType<String>()
           .toList(),

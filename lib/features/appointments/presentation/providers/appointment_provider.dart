@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/dio_provider.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/datasources/appointment_remote_data_source.dart';
 import '../../data/repositories/appointment_repository_impl.dart';
 import '../../domain/entities/appointment.dart';
@@ -13,12 +16,27 @@ final appointmentRepositoryProvider = Provider<AppointmentRepository>(
       AppointmentRepositoryImpl(ref.watch(appointmentRemoteDataSourceProvider)),
 );
 final myAppointmentsProvider = FutureProvider.autoDispose<List<Appointment>>(
-  (ref) => ref.watch(appointmentRepositoryProvider).getMine(),
+  (ref) {
+    final userId = ref.watch(
+      authControllerProvider.select((state) => state.asData?.value?.user.id),
+    );
+    if (userId == null) return const <Appointment>[];
+    return ref.watch(appointmentRepositoryProvider).getMine();
+  },
 );
 final landlordAppointmentsProvider =
     FutureProvider.autoDispose<List<Appointment>>(
-      (ref) =>
-          ref.watch(appointmentRepositoryProvider).getLandlordAppointments(),
+      (ref) {
+        final userId = ref.watch(
+          authControllerProvider.select(
+            (state) => state.asData?.value?.user.id,
+          ),
+        );
+        if (userId == null) return const <Appointment>[];
+        return ref
+            .watch(appointmentRepositoryProvider)
+            .getLandlordAppointments();
+      },
     );
 final appointmentActionProvider =
     AsyncNotifierProvider<AppointmentActionController, void>(
@@ -29,7 +47,11 @@ class AppointmentActionController extends AsyncNotifier<void> {
   AppointmentRepository get _repository =>
       ref.read(appointmentRepositoryProvider);
   @override
-  Future<void> build() async {}
+  FutureOr<void> build() {
+    ref.watch(
+      authControllerProvider.select((state) => state.asData?.value?.user.id),
+    );
+  }
 
   Future<Appointment?> create({
     required String roomId,

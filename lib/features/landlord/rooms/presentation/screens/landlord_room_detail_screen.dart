@@ -136,6 +136,10 @@ SharedRoomDetailData _landlordDetailViewData(LandlordRoomDetail room) {
         .map((item) => item.displayUrl)
         .whereType<String>()
         .toList(growable: false),
+    videoUrls: room.videos
+        .map((item) => item.displayUrl)
+        .whereType<String>()
+        .toList(growable: false),
     amenities: room.amenities.map((item) => item.name).toList(growable: false),
     description: room.description,
     houseRules: room.houseRules,

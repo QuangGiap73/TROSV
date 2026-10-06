@@ -157,7 +157,7 @@ class _PropertyStepState extends ConsumerState<PropertyStep> {
                   label: 'Tên khu trọ',
                   required: true,
                   enabled: editingNewProperty,
-                  hint: 'Ví dụ: Nhà trọ Bình Minh',
+                  hint: 'VD: Nhà trọ Bình Minh',
                   onChanged: (value) {
                     draft.propertyName = value;
                     draft.changed();

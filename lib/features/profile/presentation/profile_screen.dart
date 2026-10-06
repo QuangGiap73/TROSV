@@ -45,7 +45,7 @@ class ProfileScreen extends ConsumerWidget {
                       onPersonalInfo: () =>
                           context.push('/profile/personal-info'),
                       onPreferences: () => context.push('/profile/preferences'),
-                      onFavorites: () => context.go('/favorites'),
+                      onFavorites: () => context.push('/favorites'),
                       onAppointments: () =>
                           context.push('/profile/appointments'),
                     ),

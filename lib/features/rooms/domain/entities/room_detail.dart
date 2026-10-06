@@ -6,12 +6,14 @@ class RoomDetail {
     required this.areaM2,
     required this.maxPeople,
     required this.priceMonthly,
+    this.estimatedMonthlyCost,
     required this.depositAmount,
     required this.status,
     required this.address,
     required this.description,
     required this.houseRules,
     required this.imageUrls,
+    this.videoUrls = const [],
     required this.amenities,
     this.floor,
     this.cost,
@@ -23,11 +25,19 @@ class RoomDetail {
   });
 
   factory RoomDetail.fromJson(Map<String, dynamic> json) {
-    final images = (json['media'] as List<dynamic>? ?? const [])
+    final media = (json['media'] as List<dynamic>? ?? const [])
         .whereType<Map<String, dynamic>>()
+        .toList(growable: false);
+    final images = media
+        .where((item) => _mediaType(item) != 'VIDEO')
         .map((item) => item['public_url'] as String? ?? item['url'] as String?)
         .whereType<String>()
         .toList();
+    final videos = media
+        .where((item) => _mediaType(item) == 'VIDEO')
+        .map((item) => item['public_url'] as String? ?? item['url'] as String?)
+        .whereType<String>()
+        .toList(growable: false);
     final fallbackImage = json['image_url'] as String?;
     if (images.isEmpty && fallbackImage != null) images.add(fallbackImage);
 
@@ -52,12 +62,15 @@ class RoomDetail {
       floor: (json['floor'] as num?)?.toInt(),
       maxPeople: (json['max_people'] as num?)?.toInt() ?? 0,
       priceMonthly: (json['price_monthly'] as num?)?.toInt() ?? 0,
+      estimatedMonthlyCost:
+          (json['estimated_monthly_cost'] as num?)?.toInt(),
       depositAmount: (json['deposit_amount'] as num?)?.toInt() ?? 0,
       status: json['status'] as String? ?? 'UNKNOWN',
       address: address,
       description: json['description'] as String? ?? 'Chưa có mô tả.',
       houseRules: json['house_rules'] as String? ?? 'Chưa có nội quy.',
       imageUrls: images,
+      videoUrls: videos,
       amenities: amenities,
       cost: json['cost'] is Map<String, dynamic>
           ? RoomCost.fromJson(json['cost'] as Map<String, dynamic>)
@@ -79,12 +92,14 @@ class RoomDetail {
   final int? floor;
   final int maxPeople;
   final int priceMonthly;
+  final int? estimatedMonthlyCost;
   final int depositAmount;
   final String status;
   final String address;
   final String description;
   final String houseRules;
   final List<String> imageUrls;
+  final List<String> videoUrls;
   final List<String> amenities;
   final RoomCost? cost;
   final DateTime? availableDate;
@@ -92,6 +107,11 @@ class RoomDetail {
   final DateTime? publishedAt;
   final String? landlordName;
   final int viewsCount;
+}
+
+String _mediaType(Map<String, dynamic> media) {
+  return (media['media_type'] as String? ?? media['type'] as String? ?? 'IMAGE')
+      .toUpperCase();
 }
 
 class RoomCost {

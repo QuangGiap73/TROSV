@@ -4,6 +4,7 @@ class RoomSummary {
     required this.title,
     required this.roomType,
     required this.priceMonthly,
+    this.estimatedMonthlyCost,
     required this.areaM2,
     required this.addressText,
     required this.district,
@@ -28,6 +29,7 @@ class RoomSummary {
     title: json['title'] as String? ?? 'Phòng chưa có tên',
     roomType: json['room_type'] as String? ?? 'UNKNOWN',
     priceMonthly: (json['price_monthly'] as num?)?.toInt() ?? 0,
+    estimatedMonthlyCost: (json['estimated_monthly_cost'] as num?)?.toInt(),
     areaM2: (json['area_m2'] as num?)?.toDouble() ?? 0,
     addressText: json['address_text'] as String? ?? '',
     district: json['district'] as String? ?? '',
@@ -55,6 +57,7 @@ class RoomSummary {
   final String title;
   final String roomType;
   final int priceMonthly;
+  final int? estimatedMonthlyCost;
   final double areaM2;
   final String addressText;
   final String district;

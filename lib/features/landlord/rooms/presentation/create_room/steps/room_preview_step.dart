@@ -165,7 +165,7 @@ class _RoomPreviewStepState extends State<RoomPreviewStep> {
               },
               decoration: _textAreaDecoration(
                 hint:
-                    'Ví dụ: Phòng khép kín, đầy đủ nội thất, nhiều ánh sáng tự nhiên, gần trường học...',
+                    'VD: Phòng khép kín, đầy đủ nội thất, nhiều ánh sáng tự nhiên, gần trường học...',
               ),
             ),
           ),
@@ -189,7 +189,7 @@ class _RoomPreviewStepState extends State<RoomPreviewStep> {
               },
               decoration: _textAreaDecoration(
                 hint:
-                    'Ví dụ:\n• Giữ gìn vệ sinh chung\n• Không gây ồn sau 22h\n• Không hút thuốc trong phòng',
+                    'VD:\n• Giữ gìn vệ sinh chung\n• Không gây ồn sau 22h\n• Không hút thuốc trong phòng',
               ),
             ),
           ),

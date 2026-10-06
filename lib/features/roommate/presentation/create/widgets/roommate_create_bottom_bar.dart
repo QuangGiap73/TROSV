@@ -30,6 +30,9 @@ class RoommateCreateBottomBar extends StatelessWidget {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: loading ? null : onBack,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(50),
+                  ),
                   icon: const Icon(Icons.arrow_back_rounded, size: 18),
                   label: const Text('Quay lại'),
                 ),
@@ -37,7 +40,6 @@ class RoommateCreateBottomBar extends StatelessWidget {
               const SizedBox(width: 12),
             ],
             Expanded(
-              flex: onBack == null ? 1 : 2,
               child: FilledButton(
                 onPressed: loading ? null : onPrimary,
                 style: FilledButton.styleFrom(

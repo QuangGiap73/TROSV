@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class CreateRoomStepLayout extends StatelessWidget {
   const CreateRoomStepLayout({
@@ -219,6 +220,7 @@ class CreateRoomTextField extends StatelessWidget {
     this.suffixText,
     this.maxLines = 1,
     this.maxLength,
+    this.inputFormatters,
     super.key,
   }) : assert(
          controller == null || initialValue == null,
@@ -241,6 +243,7 @@ class CreateRoomTextField extends StatelessWidget {
   final String? suffixText;
   final int maxLines;
   final int? maxLength;
+  final List<TextInputFormatter>? inputFormatters;
   final ValueChanged<String> onChanged;
 
   @override
@@ -270,6 +273,7 @@ class CreateRoomTextField extends StatelessWidget {
           keyboardType: keyboardType,
           maxLines: maxLines,
           maxLength: maxLength,
+          inputFormatters: inputFormatters,
           onChanged: onChanged,
           decoration: InputDecoration(
             hintText: hint,

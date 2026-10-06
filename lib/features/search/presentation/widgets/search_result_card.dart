@@ -88,6 +88,19 @@ class SearchResultCard extends StatelessWidget {
                       ],
                     ),
 
+                    if (room.estimatedMonthlyCost case final estimated?
+                        when estimated > 0) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Chi phí dự kiến: ${formatVnd(estimated)}/tháng',
+                        style: const TextStyle(
+                          color: _muted,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+
                     const SizedBox(height: 11),
 
                     Row(

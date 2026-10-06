@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/dio_provider.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/datasources/roommate_remote_data_source.dart';
 import '../../data/repositories/roommate_repository_impl.dart';
 import '../../domain/entities/roommate_post.dart';
@@ -87,6 +90,11 @@ final roommatePostsProvider = FutureProvider.autoDispose<List<RoommatePost>>((
   ref,
 ) {
   final filter = ref.watch(roommateFilterProvider);
+  // The response contains account-specific fields such as isOwner and
+  // contactLocked, so it must be refreshed whenever the active user changes.
+  ref.watch(
+    authControllerProvider.select((state) => state.asData?.value?.user.id),
+  );
 
   return ref
       .watch(roommateRepositoryProvider)
@@ -103,6 +111,11 @@ final roommatePostsProvider = FutureProvider.autoDispose<List<RoommatePost>>((
 final myRoommatePostsProvider = FutureProvider.autoDispose<List<RoommatePost>>((
   ref,
 ) {
+  final userId = ref.watch(
+    authControllerProvider.select((state) => state.asData?.value?.user.id),
+  );
+  if (userId == null) return const <RoommatePost>[];
+
   return ref.watch(roommateRepositoryProvider).getMyPosts();
 });
 
@@ -121,7 +134,7 @@ class MyRoommatePostFilterController extends Notifier<MyRoommatePostFilter> {
 }
 
 final filteredMyRoommatePostsProvider =
-    Provider<AsyncValue<List<RoommatePost>>>((ref) {
+    Provider.autoDispose<AsyncValue<List<RoommatePost>>>((ref) {
       final filter = ref.watch(myRoommatePostFilterProvider);
       return ref.watch(myRoommatePostsProvider).whenData((posts) {
         return posts
@@ -140,11 +153,20 @@ final filteredMyRoommatePostsProvider =
 
 final roommatePostDetailProvider = FutureProvider.autoDispose
     .family<RoommatePost, String>((ref, postId) {
+      ref.watch(
+        authControllerProvider.select((state) => state.asData?.value?.user.id),
+      );
       return ref.watch(roommateRepositoryProvider).getPostDetail(postId);
     });
 
 final roommateContactProvider = FutureProvider.autoDispose
     .family<RoommateContact, String>((ref, postId) {
+      final userId = ref.watch(
+        authControllerProvider.select((state) => state.asData?.value?.user.id),
+      );
+      if (userId == null) {
+        throw StateError('Báº¡n cáº§n Ä‘Äƒng nháº­p Ä‘á»ƒ xem thÃ´ng tin liÃªn há»‡.');
+      }
       return ref.watch(roommateRepositoryProvider).getContact(postId);
     });
 
@@ -159,7 +181,11 @@ class RoommatePostActionController extends AsyncNotifier<void> {
   }
 
   @override
-  Future<void> build() async {}
+  FutureOr<void> build() {
+    ref.watch(
+      authControllerProvider.select((state) => state.asData?.value?.user.id),
+    );
+  }
 
   Future<RoommatePost?> createPost(CreateRoommatePostRequest request) async {
     if (state.isLoading) return null;

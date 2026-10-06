@@ -81,16 +81,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/roommate',
-                builder: (_, _) => const RoommatePostsScreen(),
+                path: '/map',
+                builder: (_, _) => const RoomMapScreen(),
               ),
             ],
           ),
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/favorites',
-                builder: (_, _) => const FavoritesScreen(),
+                path: '/roommate',
+                builder: (_, _) => const RoommatePostsScreen(),
               ),
             ],
           ),
@@ -103,6 +103,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
         ],
+      ),
+      GoRoute(
+        path: '/favorites',
+        builder: (_, _) => const FavoritesScreen(),
       ),
       GoRoute(
         path: '/roommate/create',

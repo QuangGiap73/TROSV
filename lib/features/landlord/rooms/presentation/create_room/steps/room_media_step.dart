@@ -351,7 +351,7 @@ class _RoomMediaStepState extends State<RoomMediaStep> {
                 controller: titleController,
                 decoration: const InputDecoration(
                   labelText: 'Tên không gian',
-                  hintText: 'Ví dụ: Ban công',
+                  hintText: 'VD: Ban công',
                 ),
               ),
               const SizedBox(height: 12),

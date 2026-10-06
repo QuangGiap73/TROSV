@@ -119,6 +119,16 @@ class _RoomMapScreenState extends ConsumerState<RoomMapScreen> {
 
   Future<bool> _confirmLocationUse() async {
     if (_locationExplained) return true;
+
+    // Quyền do hệ điều hành quản lý được giữ lại giữa các lần mở ứng dụng.
+    // Nếu người dùng đã cấp quyền, bỏ qua màn giải thích và lấy GPS ngay.
+    final status = await ref.read(locationServiceProvider).getStatus();
+    if (!mounted) return false;
+    if (status.permissionGranted) {
+      _locationExplained = true;
+      return true;
+    }
+
     final accepted = await showModalBottomSheet<bool>(
       context: context,
       isDismissible: false,
@@ -376,7 +386,12 @@ class _RoomMapScreenState extends ConsumerState<RoomMapScreen> {
 
   void _returnToList() {
     final query = ref.read(roomMapControllerProvider).query;
-    context.pop(RoomMapArgs(query: query, focusLabel: _focusLabel));
+    final result = RoomMapArgs(query: query, focusLabel: _focusLabel);
+    if (context.canPop()) {
+      context.pop(result);
+      return;
+    }
+    context.go('/search');
   }
 
   Future<void> _openFilters() async {
@@ -616,7 +631,7 @@ class _RoomMapScreenState extends ConsumerState<RoomMapScreen> {
     final label = _focusLabel?.trim().isNotEmpty == true
         ? _focusLabel!.trim()
         : 'Khu vực đang tìm';
-    final imageName = 'map-focus-${label.hashCode}';
+    final imageName = 'map-focus-v2-${label.hashCode}';
     if (!_registeredMarkerImages.contains(imageName)) {
       await controller.addImage(
         imageName,
@@ -663,25 +678,27 @@ String _shortPrice(int price) {
 }
 
 String _markerImageName(int price, {required bool selected}) =>
-    'room-price-$price-${selected ? 'selected' : 'normal'}';
+    'room-price-v2-$price-${selected ? 'selected' : 'normal'}';
 
 Future<Uint8List> _createPriceMarkerImage(Color color, String label) async {
-  const width = 132.0;
-  const height = 80.0;
+  // Render at twice the previous size so both the price text and its touch
+  // target remain crisp instead of scaling up a small bitmap on the map.
+  const width = 264.0;
+  const height = 160.0;
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);
   final paint = Paint()..color = color;
   canvas.drawRRect(
     RRect.fromRectAndRadius(
-      const Rect.fromLTWH(2, 2, 128, 60),
-      const Radius.circular(21),
+      const Rect.fromLTWH(4, 4, 256, 120),
+      const Radius.circular(42),
     ),
     paint,
   );
   final path = Path()
-    ..moveTo(54, 61)
-    ..lineTo(66, 79)
-    ..lineTo(78, 61)
+    ..moveTo(108, 122)
+    ..lineTo(132, 158)
+    ..lineTo(156, 122)
     ..close();
   canvas.drawPath(path, paint);
   final painter = TextPainter(
@@ -689,16 +706,16 @@ Future<Uint8List> _createPriceMarkerImage(Color color, String label) async {
       text: label,
       style: const TextStyle(
         color: Colors.white,
-        fontSize: 27,
+        fontSize: 54,
         fontWeight: FontWeight.w800,
       ),
     ),
     textDirection: TextDirection.ltr,
     textAlign: TextAlign.center,
-  )..layout(maxWidth: 124);
+  )..layout(maxWidth: 248);
   painter.paint(
     canvas,
-    Offset((width - painter.width) / 2, 31 - painter.height / 2),
+    Offset((width - painter.width) / 2, 62 - painter.height / 2),
   );
   final image = await recorder.endRecording().toImage(
     width.toInt(),
@@ -710,27 +727,27 @@ Future<Uint8List> _createPriceMarkerImage(Color color, String label) async {
 }
 
 Future<Uint8List> _createSchoolMarkerImage(String label) async {
-  const width = 330.0;
-  const height = 94.0;
+  const width = 660.0;
+  const height = 188.0;
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);
   final paint = Paint()..color = const Color(0xFF2478F2);
   canvas.drawRRect(
     RRect.fromRectAndRadius(
-      const Rect.fromLTWH(2, 2, 326, 68),
-      const Radius.circular(24),
+      const Rect.fromLTWH(4, 4, 652, 136),
+      const Radius.circular(48),
     ),
     paint,
   );
   final path = Path()
-    ..moveTo(148, 69)
-    ..lineTo(165, 93)
-    ..lineTo(182, 69)
+    ..moveTo(296, 138)
+    ..lineTo(330, 186)
+    ..lineTo(364, 138)
     ..close();
   canvas.drawPath(path, paint);
   canvas.drawCircle(
-    const Offset(38, 36),
-    25,
+    const Offset(76, 72),
+    50,
     Paint()..color = const Color(0x33FFFFFF),
   );
   final icon = TextPainter(
@@ -738,28 +755,28 @@ Future<Uint8List> _createSchoolMarkerImage(String label) async {
       text: String.fromCharCode(Icons.school_rounded.codePoint),
       style: TextStyle(
         color: Colors.white,
-        fontSize: 31,
+        fontSize: 62,
         fontFamily: Icons.school_rounded.fontFamily,
         package: Icons.school_rounded.fontPackage,
       ),
     ),
     textDirection: TextDirection.ltr,
   )..layout();
-  icon.paint(canvas, Offset(38 - icon.width / 2, 36 - icon.height / 2));
+  icon.paint(canvas, Offset(76 - icon.width / 2, 72 - icon.height / 2));
   final title = TextPainter(
     text: TextSpan(
       text: label,
       style: const TextStyle(
         color: Colors.white,
-        fontSize: 22,
+        fontSize: 44,
         fontWeight: FontWeight.w800,
       ),
     ),
     textDirection: TextDirection.ltr,
     maxLines: 1,
     ellipsis: '…',
-  )..layout(maxWidth: 244);
-  title.paint(canvas, Offset(70, 36 - title.height / 2));
+  )..layout(maxWidth: 488);
+  title.paint(canvas, Offset(140, 72 - title.height / 2));
   final image = await recorder.endRecording().toImage(
     width.toInt(),
     height.toInt(),
@@ -1227,12 +1244,12 @@ class _RoomMapPreview extends StatelessWidget {
     child: InkWell(
       onTap: onTap,
       child: SizedBox(
-        height: 112,
+        height: (room.estimatedMonthlyCost ?? 0) > 0 ? 132 : 112,
         child: Row(
           children: [
             SizedBox(
               width: 112,
-              height: 112,
+              height: double.infinity,
               child: room.imageUrl?.isNotEmpty == true
                   ? Image.network(
                       room.imageUrl!,
@@ -1274,6 +1291,18 @@ class _RoomMapPreview extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
+                    if (room.estimatedMonthlyCost case final estimated?
+                        when estimated > 0)
+                      Text(
+                        'Dự kiến ${formatVnd(estimated)}/tháng',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF667571),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     const Spacer(),
                     Row(
                       children: [

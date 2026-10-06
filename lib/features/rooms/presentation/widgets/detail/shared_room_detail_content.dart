@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../core/utils/currency_formatter.dart';
+import '../network_video_player.dart';
 
 class SharedRoomDetailData {
   const SharedRoomDetailData({
     required this.title,
     required this.status,
     required this.priceMonthly,
+    this.estimatedMonthlyCost,
     required this.depositAmount,
     required this.areaM2,
     required this.maxPeople,
     required this.address,
     required this.imageUrls,
+    this.videoUrls = const [],
     required this.amenities,
     required this.costs,
     this.floor,
@@ -24,9 +27,11 @@ class SharedRoomDetailData {
   });
   final String title, status, address;
   final int priceMonthly, depositAmount, maxPeople, viewsCount;
+  final int? estimatedMonthlyCost;
   final double areaM2;
   final int? floor;
   final List<String> imageUrls, amenities;
+  final List<String> videoUrls;
   final Map<String, int> costs;
   final String? description, houseRules, rejectionReason;
   final DateTime? availableDate, lastConfirmedAt;
@@ -48,6 +53,10 @@ class SharedRoomDetailContent extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 8, 14, 110),
       children: [
         _Gallery(urls: room.imageUrls),
+        if (room.videoUrls.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          _VideoSection(urls: room.videoUrls),
+        ],
         const SizedBox(height: 16),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,6 +84,18 @@ class SharedRoomDetailContent extends StatelessWidget {
             color: Color(0xFF00856F),
           ),
         ),
+        if (room.estimatedMonthlyCost case final estimated?
+            when estimated > 0) ...[
+          const SizedBox(height: 5),
+          Text(
+            'Chi phí dự kiến: ${formatVnd(estimated)}/tháng',
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF667571),
+            ),
+          ),
+        ],
         const SizedBox(height: 14),
         _Card(
           child: Row(
@@ -187,6 +208,18 @@ class SharedRoomDetailTabView extends StatelessWidget {
               color: Color(0xFF00856F),
             ),
           ),
+          if (room.estimatedMonthlyCost case final estimated?
+              when estimated > 0) ...[
+            const SizedBox(height: 5),
+            Text(
+              'Chi phí dự kiến: ${formatVnd(estimated)}/tháng',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF667571),
+              ),
+            ),
+          ],
           const SizedBox(height: 14),
           _Card(
             child: Row(
@@ -281,6 +314,10 @@ class SharedRoomDetailTabView extends StatelessWidget {
                     ),
                   ),
           ),
+          if (room.videoUrls.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            _VideoSection(urls: room.videoUrls),
+          ],
         ]),
         _tab([_Amenities(items: room.amenities)]),
         _tab([_Costs(room: room)]),
@@ -324,6 +361,29 @@ class SharedRoomDetailTabBar extends StatelessWidget
       ],
     );
   }
+}
+
+class _VideoSection extends StatelessWidget {
+  const _VideoSection({required this.urls});
+
+  final List<String> urls;
+
+  @override
+  Widget build(BuildContext context) => _Section(
+    title: 'Video phòng (${urls.length})',
+    icon: Icons.play_circle_outline_rounded,
+    child: Column(
+      children: [
+        for (var index = 0; index < urls.length; index++) ...[
+          NetworkVideoPlayer(
+            key: ValueKey(urls[index]),
+            url: urls[index],
+          ),
+          if (index < urls.length - 1) const SizedBox(height: 12),
+        ],
+      ],
+    ),
+  );
 }
 
 class _Gallery extends StatefulWidget {

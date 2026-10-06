@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../rooms/presentation/widgets/network_video_player.dart';
 import '../../../domain/entities/landlord_room_detail.dart';
 import 'landlord_room_ui.dart';
 
@@ -74,43 +75,17 @@ class LandlordRoomMediaTab extends StatelessWidget {
                     text: 'Phòng chưa có video.',
                   )
                 : Column(
-                    children: List.generate(
-                      room.videos.length,
-                      (index) => Padding(
-                        padding: EdgeInsets.only(
-                          bottom: index == room.videos.length - 1 ? 0 : 9,
-                        ),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF4F8F7),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: roomBorder),
+                    children: [
+                      for (var index = 0; index < room.videos.length; index++)
+                        if (room.videos[index].displayUrl case final url?) ...[
+                          NetworkVideoPlayer(
+                            key: ValueKey(url),
+                            url: url,
                           ),
-                          child: Row(
-                            children: [
-                              const CircleAvatar(
-                                backgroundColor: Color(0xFFE2F5F0),
-                                child: Icon(
-                                  Icons.play_arrow_rounded,
-                                  color: roomGreenDark,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  'Video ${index + 1}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    color: roomText,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
+                          if (index < room.videos.length - 1)
+                            const SizedBox(height: 12),
+                        ],
+                    ],
                   ),
           ),
           OutlinedButton.icon(

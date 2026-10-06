@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/appointment.dart';
 import '../providers/appointment_provider.dart';
 import '../widgets/appointment_card.dart';
@@ -46,6 +47,38 @@ class _TenantAppointmentsScreenState
 
   @override
   Widget build(BuildContext context) {
+    final auth = ref.watch(authControllerProvider);
+    final session = auth.asData?.value;
+
+    if (auth.isLoading && session == null) {
+      return const Scaffold(
+        backgroundColor: _background,
+        body: Center(child: CircularProgressIndicator(color: _green)),
+      );
+    }
+
+    if (session == null) {
+      return Scaffold(
+        backgroundColor: _background,
+        appBar: AppBar(
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          backgroundColor: _background,
+          surfaceTintColor: Colors.transparent,
+          titleSpacing: 16,
+          title: const Text(
+            'Lịch trình',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              color: _textPrimary,
+            ),
+          ),
+        ),
+        body: _LoginRequired(onLogin: _login),
+      );
+    }
+
     final data = ref.watch(myAppointmentsProvider);
     final actionState = ref.watch(appointmentActionProvider);
 
@@ -110,6 +143,14 @@ class _TenantAppointmentsScreenState
         data: (items) => _buildContent(items, actionState.isLoading),
       ),
     );
+  }
+
+  Future<void> _login() async {
+    ref.read(authControllerProvider.notifier).clearError();
+    final loggedIn = await context.push<bool>('/login');
+    if (loggedIn == true && mounted) {
+      ref.invalidate(myAppointmentsProvider);
+    }
   }
 
   Widget _buildContent(List<Appointment> items, bool busy) {
@@ -1006,6 +1047,78 @@ class _ErrorView extends StatelessWidget {
               onPressed: onRetry,
               icon: const Icon(Icons.refresh_rounded),
               label: const Text('Thử lại'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LoginRequired extends StatelessWidget {
+  const _LoginRequired({required this.onLogin});
+
+  final VoidCallback onLogin;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(28, 24, 28, 80),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 92,
+              height: 92,
+              decoration: const BoxDecoration(
+                color: _greenSoft,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.calendar_month_rounded,
+                size: 44,
+                color: _greenDark,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Đăng nhập để xem lịch trình',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: _textPrimary,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Theo dõi lịch xem phòng, cập nhật thời gian và quản lý các cuộc hẹn của bạn tại một nơi.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: _textSecondary,
+                fontSize: 13,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: FilledButton.icon(
+                onPressed: onLogin,
+                style: FilledButton.styleFrom(
+                  backgroundColor: _green,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                icon: const Icon(Icons.login_rounded, size: 20),
+                label: const Text(
+                  'Đăng nhập',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
             ),
           ],
         ),
