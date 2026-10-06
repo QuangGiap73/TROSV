@@ -95,17 +95,14 @@ class LandlordRoomDetail {
   }
 
   List<LandlordRoomMedia> get images =>
-      media
-          .where((item) => item.mediaType.toUpperCase() == 'IMAGE')
-          .toList(growable: false)
+      media.where((item) => !item.isVideo).toList(growable: false)
         ..sort((a, b) {
           if (a.isPrimary != b.isPrimary) return a.isPrimary ? -1 : 1;
           return a.sortOrder.compareTo(b.sortOrder);
         });
 
-  List<LandlordRoomMedia> get videos => media
-      .where((item) => item.mediaType.toUpperCase() == 'VIDEO')
-      .toList(growable: false);
+  List<LandlordRoomMedia> get videos =>
+      media.where((item) => item.isVideo).toList(growable: false);
 }
 
 class LandlordPropertyDetail {
@@ -204,6 +201,15 @@ class LandlordRoomMedia {
   final bool isPrimary;
   final int sortOrder;
   String? get displayUrl => _nullableString(publicUrl) ?? _nullableString(url);
+  bool get isVideo {
+    if (mediaType.toUpperCase() == 'VIDEO') return true;
+    final value = displayUrl ?? objectKey;
+    if (value == null || value.trim().isEmpty) return false;
+    final path =
+        Uri.tryParse(value.trim())?.path.toLowerCase() ??
+        value.trim().toLowerCase();
+    return const ['.mp4', '.m4v', '.mov', '.webm', '.3gp'].any(path.endsWith);
+  }
 }
 
 class LandlordRoomCost {

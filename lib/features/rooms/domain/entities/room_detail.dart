@@ -29,12 +29,12 @@ class RoomDetail {
         .whereType<Map<String, dynamic>>()
         .toList(growable: false);
     final images = media
-        .where((item) => _mediaType(item) != 'VIDEO')
+        .where((item) => !_isVideoMedia(item))
         .map((item) => item['public_url'] as String? ?? item['url'] as String?)
         .whereType<String>()
         .toList();
     final videos = media
-        .where((item) => _mediaType(item) == 'VIDEO')
+        .where(_isVideoMedia)
         .map((item) => item['public_url'] as String? ?? item['url'] as String?)
         .whereType<String>()
         .toList(growable: false);
@@ -62,8 +62,7 @@ class RoomDetail {
       floor: (json['floor'] as num?)?.toInt(),
       maxPeople: (json['max_people'] as num?)?.toInt() ?? 0,
       priceMonthly: (json['price_monthly'] as num?)?.toInt() ?? 0,
-      estimatedMonthlyCost:
-          (json['estimated_monthly_cost'] as num?)?.toInt(),
+      estimatedMonthlyCost: (json['estimated_monthly_cost'] as num?)?.toInt(),
       depositAmount: (json['deposit_amount'] as num?)?.toInt() ?? 0,
       status: json['status'] as String? ?? 'UNKNOWN',
       address: address,
@@ -112,6 +111,20 @@ class RoomDetail {
 String _mediaType(Map<String, dynamic> media) {
   return (media['media_type'] as String? ?? media['type'] as String? ?? 'IMAGE')
       .toUpperCase();
+}
+
+bool _isVideoMedia(Map<String, dynamic> media) {
+  if (_mediaType(media) == 'VIDEO') return true;
+  final url = media['public_url'] as String? ?? media['url'] as String?;
+  return _looksLikeVideoUrl(url);
+}
+
+bool _looksLikeVideoUrl(String? value) {
+  if (value == null || value.trim().isEmpty) return false;
+  final path =
+      Uri.tryParse(value.trim())?.path.toLowerCase() ??
+      value.trim().toLowerCase();
+  return const ['.mp4', '.m4v', '.mov', '.webm', '.3gp'].any(path.endsWith);
 }
 
 class RoomCost {

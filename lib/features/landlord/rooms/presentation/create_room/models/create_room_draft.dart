@@ -103,7 +103,7 @@ class CreateRoomDraft extends ChangeNotifier {
           .map(
             (item) => ExistingRoomMedia(
               id: item.id,
-              mediaType: item.mediaType,
+              mediaType: item.isVideo ? 'VIDEO' : 'IMAGE',
               url: item.displayUrl!,
               isPrimary: item.isPrimary,
             ),
