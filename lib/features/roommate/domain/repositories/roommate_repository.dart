@@ -1,3 +1,5 @@
+import 'package:image_picker/image_picker.dart';
+
 import '../entities/roommate_post.dart';
 import '../entities/roommate_contact.dart';
 import '../models/create_roommate_post_request.dart';
@@ -21,6 +23,8 @@ abstract interface class RoommateRepository {
   Future<RoommateContact> getContact(String postId);
 
   Future<RoommatePost> createPost(CreateRoommatePostRequest request);
+
+  Future<String> uploadMedia(XFile file);
 
   Future<RoommatePost> updateMemberCounts({
     required String postId,

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../domain/models/roommate_create_draft.dart';
 import 'roommate_provider.dart';
@@ -48,6 +49,19 @@ class RoommateCreateDraftController extends Notifier<RoommateCreateDraft> {
     state = state.copyWith(lifestyleTags: tags);
   }
 
+  void addImages(List<XFile> files) {
+    state = state.copyWith(imageFiles: [...state.imageFiles, ...files]);
+  }
+
+  void removeImage(int index) {
+    final images = [...state.imageFiles]..removeAt(index);
+    state = state.copyWith(imageFiles: images);
+  }
+
+  void setVideo(XFile? file) {
+    state = state.copyWith(videoFiles: file == null ? const [] : [file]);
+  }
+
   void reset() {
     state = RoommateCreateDraft(
       moveInDate: DateTime.now().add(const Duration(days: 7)),
@@ -72,9 +86,17 @@ class SubmitRoommatePostController extends AsyncNotifier<String?> {
     state = const AsyncLoading();
 
     try {
+      final repository = ref.read(roommateRepositoryProvider);
+      final uploadedUrls = <String>[];
+      for (final file in [...draft.imageFiles, ...draft.videoFiles]) {
+        uploadedUrls.add(await repository.uploadMedia(file));
+      }
+      final request = draft
+          .copyWith(mediaUrls: [...draft.mediaUrls, ...uploadedUrls])
+          .toRequest();
       final post = await ref
           .read(roommateRepositoryProvider)
-          .createPost(draft.toRequest());
+          .createPost(request);
 
       state = AsyncData(post.id);
 

@@ -123,65 +123,167 @@ class _PreferenceScreenState extends ConsumerState<PreferenceScreen> {
   }
 
   Future<bool> _showSavedDialog() async {
-    final result = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        contentPadding: const EdgeInsets.fromLTRB(24, 28, 24, 10),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
-              radius: 34,
-              backgroundColor: Color(0xFFDDF6EF),
-              child: Icon(Icons.check_rounded, size: 38, color: _primaryDark),
-            ),
-            SizedBox(height: 18),
-            Text(
-              'Lưu nhu cầu thành công!',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: _navy,
-                fontSize: 19,
-                fontWeight: FontWeight.w800,
+  final result = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    barrierColor: Colors.black.withOpacity(0.42),
+    builder: (dialogContext) {
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+        child: Container(
+          constraints: const BoxConstraints(
+            maxWidth: 340,
+          ),
+          padding: const EdgeInsets.fromLTRB(
+            22,
+            24,
+            22,
+            18,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x1A000000),
+                blurRadius: 28,
+                offset: Offset(0, 12),
               ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'TrọSV đã ghi nhận các tiêu chí của bạn. Bạn có muốn xem những phòng phù hợp ngay bây giờ không?',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: _muted, fontSize: 13, height: 1.45),
-            ),
-          ],
-        ),
-        actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
-        actionsAlignment: MainAxisAlignment.center,
-        actions: [
-          Row(
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: const Text('Để sau'),
+              //
+              // ICON SUCCESS
+              //
+              Container(
+                width: 58,
+                height: 58,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE2F7F1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_rounded,
+                  size: 32,
+                  color: _primaryDark,
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                flex: 2,
-                child: FilledButton.icon(
-                  onPressed: () => Navigator.of(dialogContext).pop(true),
-                  icon: const Icon(Icons.auto_awesome_rounded, size: 18),
-                  label: const Text('Xem phòng phù hợp'),
+
+              const SizedBox(height: 18),
+
+              //
+              // TITLE
+              //
+              const Text(
+                'Lưu nhu cầu thành công',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _navy,
+                  fontSize: 19,
+                  height: 1.2,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+
+              const SizedBox(height: 9),
+
+              //
+              // DESCRIPTION
+              //
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                  'TrọSV đã lưu các tiêu chí của bạn. '
+                  'Xem ngay những phòng phù hợp với nhu cầu?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: _muted,
+                    fontSize: 13,
+                    height: 1.45,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 22),
+
+              //
+              // PRIMARY BUTTON
+              //
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop(true);
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _primaryDark,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.auto_awesome_rounded,
+                        size: 18,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Xem phòng phù hợp',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 6),
+
+              //
+              // SECONDARY ACTION
+              //
+              TextButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(false);
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: _muted,
+                  minimumSize: const Size(
+                    double.infinity,
+                    40,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Để sau',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
           ),
-        ],
-      ),
-    );
-    return result ?? false;
-  }
+        ),
+      );
+    },
+  );
+
+  return result ?? false;
+}
 
   Future<void> _openUniversityPicker() async {
     List<UniversityLocation> universities;
@@ -462,6 +564,7 @@ class _PreferenceScreenState extends ConsumerState<PreferenceScreen> {
                 runSpacing: 8,
                 children: [
                   ChoiceChip(
+                    avatar: const Icon(Icons.grid_view_rounded, size: 17),
                     label: const Text('Tất cả'),
                     selected: _roomType == null,
                     showCheckmark: false,
@@ -469,6 +572,7 @@ class _PreferenceScreenState extends ConsumerState<PreferenceScreen> {
                   ),
                   ..._roomTypes.entries.map(
                     (entry) => ChoiceChip(
+                      avatar: Icon(_roomTypeIcon(entry.key), size: 17),
                       label: Text(entry.value),
                       selected: _roomType == entry.key,
                       showCheckmark: false,
@@ -550,6 +654,11 @@ class _PreferenceScreenState extends ConsumerState<PreferenceScreen> {
                       );
 
                       return FilterChip(
+                        avatar: Icon(
+                          _amenityIcon(amenity.code, amenity.name),
+                          size: 17,
+                          color: selected ? _primaryDark : _muted,
+                        ),
                         label: Text(amenity.name),
                         selected: selected,
                         showCheckmark: false,
@@ -584,6 +693,7 @@ class _PreferenceScreenState extends ConsumerState<PreferenceScreen> {
               const SizedBox(height: 18),
 
               _CheckOption(
+                icon: Icons.bathtub_outlined,
                 title: 'WC khép kín',
                 value: _bathroomPrivate,
                 onChanged: (value) {
@@ -592,6 +702,7 @@ class _PreferenceScreenState extends ConsumerState<PreferenceScreen> {
               ),
               const SizedBox(height: 10),
               _CheckOption(
+                icon: Icons.balcony_rounded,
                 title: 'Có ban công / thoáng gió',
                 value: _hasBalcony,
                 onChanged: (value) {
@@ -675,6 +786,56 @@ class _PreferenceScreenState extends ConsumerState<PreferenceScreen> {
 
     return value.toStringAsFixed(1);
   }
+}
+
+IconData _roomTypeIcon(String roomType) => switch (roomType) {
+  'ROOM_SINGLE' => Icons.meeting_room_outlined,
+  'ROOM_SHARED' => Icons.groups_outlined,
+  'STUDIO' => Icons.weekend_outlined,
+  'ONE_BEDROOM' => Icons.bed_outlined,
+  'WHOLE_HOUSE' => Icons.home_work_outlined,
+  _ => Icons.home_outlined,
+};
+
+IconData _amenityIcon(String code, String name) {
+  final value = '$code $name'.toUpperCase();
+
+  if (value.contains('WIFI')) return Icons.wifi_rounded;
+  if (value.contains('AIR') || value.contains('ĐIỀU HÒA')) {
+    return Icons.ac_unit_rounded;
+  }
+  if (value.contains('WASH') || value.contains('MÁY GIẶT')) {
+    return Icons.local_laundry_service_rounded;
+  }
+  if (value.contains('FRIDGE') || value.contains('TỦ LẠNH')) {
+    return Icons.kitchen_rounded;
+  }
+  if (value.contains('WATER_HEATER') || value.contains('NÓNG LẠNH')) {
+    return Icons.hot_tub_rounded;
+  }
+  if (value.contains('FINGER') || value.contains('VÂN TAY')) {
+    return Icons.fingerprint_rounded;
+  }
+  if (value.contains('ELEVATOR') || value.contains('THANG MÁY')) {
+    return Icons.elevator_rounded;
+  }
+  if (value.contains('BALCONY') || value.contains('BAN CÔNG')) {
+    return Icons.balcony_rounded;
+  }
+  if (value.contains('PARK') || value.contains('ĐỂ XE')) {
+    return Icons.two_wheeler_rounded;
+  }
+  if (value.contains('CAMERA')) return Icons.photo_camera_outlined;
+  if (value.contains('WARDROBE') || value.contains('TỦ QUẦN')) {
+    return Icons.door_sliding_outlined;
+  }
+  if (value.contains('BED') || value.contains('GIƯỜNG')) {
+    return Icons.bed_rounded;
+  }
+  if (value.contains('KITCHEN') || value.contains('BẾP')) {
+    return Icons.soup_kitchen_rounded;
+  }
+  return Icons.check_circle_outline_rounded;
 }
 
 class _UniversityPicker extends StatefulWidget {
@@ -989,11 +1150,13 @@ class _TapField extends StatelessWidget {
 
 class _CheckOption extends StatelessWidget {
   const _CheckOption({
+    required this.icon,
     required this.title,
     required this.value,
     required this.onChanged,
   });
 
+  final IconData icon;
   final String title;
   final bool value;
   final ValueChanged<bool> onChanged;
@@ -1007,6 +1170,13 @@ class _CheckOption extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE7ECEB)),
       ),
       child: CheckboxListTile(
+        secondary: Icon(
+          icon,
+          size: 21,
+          color: value
+              ? _PreferenceScreenState._primaryDark
+              : _PreferenceScreenState._muted,
+        ),
         value: value,
         onChanged: (value) {
           onChanged(value ?? false);
@@ -1049,6 +1219,12 @@ class _AlertOption extends StatelessWidget {
           onChanged(value ?? false);
         },
         controlAffinity: ListTileControlAffinity.leading,
+        secondary: Icon(
+          Icons.notifications_active_outlined,
+          color: value
+              ? _PreferenceScreenState._primaryDark
+              : _PreferenceScreenState._muted,
+        ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
         activeColor: _PreferenceScreenState._primary,
         title: const Text(

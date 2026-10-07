@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "1042886443999",
+    "project_id": "trosv-6c4f2",
+    "storage_bucket": "trosv-6c4f2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1042886443999:android:694fc39715e58ac834fa6a",
+        "android_client_info": {
+          "package_name": "vn.trosv.trosv_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1042886443999-e4qs9c94mpjsv53b2ldh5pagl7cgbh2u.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD7TEta9GXtIWleptmhtQnNjU6SIyByHng"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1042886443999-e4qs9c94mpjsv53b2ldh5pagl7cgbh2u.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1042886443999-oqnkl5rccnm1t7r4kh8sc9u6fg87ah81.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "vn.trosv.trosvApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

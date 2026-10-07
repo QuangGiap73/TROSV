@@ -25,16 +25,11 @@ class AppointmentCard extends StatelessWidget {
   final Appointment appointment;
   final bool landlordView;
 
-  /// Dùng để mở màn chi tiết lịch hẹn khi bấm card.
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
 
-  /// Backend AppointmentResponse hiện chưa có room_address.
-  /// Nếu sau này API trả địa chỉ hoặc màn cha lấy được địa chỉ phòng,
-  /// chỉ cần truyền vào đây.
   final String? roomAddress;
 
-  // Giữ các callback cũ để không phá code màn đang dùng AppointmentCard.
   final VoidCallback? onCancel;
   final VoidCallback? onReschedule;
   final VoidCallback? onConfirm;
@@ -42,116 +37,194 @@ class AppointmentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(15),
-      child: InkWell(
-        onTap: onTap,
-        onLongPress: onLongPress,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(15),
-        child: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(15),
-            border: Border.all(color: _border),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x08000000),
-                blurRadius: 10,
-                offset: Offset(0, 3),
-              ),
-            ],
+        border: Border.all(
+          color: const Color(0xFFE4ECE9),
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 10,
+            offset: Offset(0, 3),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _RoomImage(url: appointment.roomImage),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(15),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          onLongPress: onLongPress,
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                //
+                // ẢNH PHÒNG
+                //
+                _RoomImage(
+                  url: appointment.roomImage,
+                ),
+
+                const SizedBox(width: 11),
+
+                //
+                // TOÀN BỘ THÔNG TIN
+                //
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      //
+                      // TITLE
+                      //
+                      Text(
+                        appointment.roomTitle ?? 'Phòng trọ',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          height: 1.15,
+                          fontWeight: FontWeight.w800,
+                          color: _textPrimary,
+                        ),
+                      ),
+
+                      //
+                      // PRICE
+                      //
+                      if (appointment.roomPrice != null) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          '${formatVnd(
+                            appointment.roomPrice!,
+                          )}/tháng',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            height: 1.15,
+                            fontWeight: FontWeight.w900,
+                            color: _greenDark,
+                          ),
+                        ),
+                      ],
+
+                      const SizedBox(height: 5),
+
+                      //
+                      // STATUS
+                      //
+                      AppointmentStatusBadge(
+                        status: appointment.status,
+                      ),
+
+                      const SizedBox(height: 7),
+
+                      //
+                      // NGÀY + GIỜ
+                      //
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.calendar_today_outlined,
+                            size: 13.5,
+                            color: Color(0xFF687A75),
+                          ),
+                          const SizedBox(width: 5),
+                          Expanded(
+                            child: Text(
+                              '${_weekday(
+                                appointment.bookingDate,
+                              )}, ${_date(
+                                appointment.bookingDate,
+                              )}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 10.5,
+                                height: 1.2,
+                                color: _textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 4),
+
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.schedule_rounded,
+                            size: 14,
+                            color: Color(0xFF687A75),
+                          ),
+                          const SizedBox(width: 5),
+                          Expanded(
+                            child: Text(
+                              appointment.timeSlot,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 10.5,
+                                height: 1.2,
+                                color: _textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      //
+                      // ĐỊA CHỈ - CHỈ HIỆN NẾU CÓ
+                      //
+                      if (roomAddress?.trim().isNotEmpty == true) ...[
+                        const SizedBox(height: 4),
+
                         Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            const Icon(
+                              Icons.location_on_outlined,
+                              size: 14,
+                              color: Color(0xFF687A75),
+                            ),
+                            const SizedBox(width: 5),
                             Expanded(
                               child: Text(
-                                appointment.roomTitle ?? 'Phòng trọ',
-                                maxLines: 2,
+                                roomAddress!.trim(),
+                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
-                                  fontSize: 13.5,
-                                  height: 1.18,
-                                  fontWeight: FontWeight.w800,
-                                  color: _textPrimary,
+                                  fontSize: 10.5,
+                                  color: _textSecondary,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 6),
-                            AppointmentStatusBadge(status: appointment.status),
                           ],
                         ),
-                        if (appointment.roomPrice != null) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            '${formatVnd(appointment.roomPrice!)}/tháng',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w900,
-                              color: _greenDark,
-                            ),
-                          ),
-                        ],
                       ],
-                    ),
+                    ],
+                  ),
+                ),
+
+                //
+                // MŨI TÊN
+                //
+                if (onTap != null) ...[
+                  const SizedBox(width: 5),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    size: 20,
+                    color: Color(0xFF9AA7A3),
                   ),
                 ],
-              ),
-
-              const SizedBox(height: 10),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _InfoLine(
-                          icon: Icons.calendar_today_outlined,
-                          text:
-                              '${_weekday(appointment.bookingDate)}, ${_date(appointment.bookingDate)}',
-                        ),
-                        const SizedBox(height: 6),
-                        _InfoLine(
-                          icon: Icons.schedule_rounded,
-                          text: appointment.timeSlot,
-                        ),
-                        if (roomAddress?.trim().isNotEmpty == true) ...[
-                          const SizedBox(height: 6),
-                          _InfoLine(
-                            icon: Icons.location_on_outlined,
-                            text: roomAddress!,
-                            maxLines: 1,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  if (onTap != null) ...[
-                    const SizedBox(width: 8),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: Color(0xFF84938F),
-                      size: 22,
-                    ),
-                  ],
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -159,45 +232,199 @@ class AppointmentCard extends StatelessWidget {
   }
 }
 
+class _AppointmentRoomInfo extends StatelessWidget {
+  const _AppointmentRoomInfo({
+    required this.appointment,
+  });
+
+  final Appointment appointment;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        //
+        // TITLE
+        //
+        Text(
+          appointment.roomTitle ?? 'Phòng trọ',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 14,
+            height: 1.18,
+            fontWeight: FontWeight.w800,
+            color: _textPrimary,
+          ),
+        ),
+
+        //
+        // PRICE
+        //
+        if (appointment.roomPrice != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            '${formatVnd(appointment.roomPrice!)}/tháng',
+            style: const TextStyle(
+              fontSize: 13.5,
+              height: 1.15,
+              fontWeight: FontWeight.w900,
+              color: _greenDark,
+            ),
+          ),
+        ],
+
+        //
+        // STATUS
+        //
+        const SizedBox(height: 7),
+
+        AppointmentStatusBadge(
+          status: appointment.status,
+        ),
+      ],
+    );
+  }
+}
+
+class _AppointmentMeta extends StatelessWidget {
+  const _AppointmentMeta({
+    required this.appointment,
+    required this.roomAddress,
+    required this.onTap,
+  });
+
+  final Appointment appointment;
+  final String? roomAddress;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              //
+              // NGÀY
+              //
+              _InfoLine(
+                icon: Icons.calendar_today_outlined,
+                text:
+                    '${_weekday(appointment.bookingDate)}, '
+                    '${_date(appointment.bookingDate)}',
+              ),
+
+              const SizedBox(height: 5),
+
+              //
+              // GIỜ
+              //
+              _InfoLine(
+                icon: Icons.schedule_rounded,
+                text: appointment.timeSlot,
+              ),
+
+              //
+              // ĐỊA CHỈ
+              //
+              if (roomAddress?.trim().isNotEmpty == true) ...[
+                const SizedBox(height: 5),
+                _InfoLine(
+                  icon: Icons.location_on_outlined,
+                  text: roomAddress!.trim(),
+                  maxLines: 1,
+                ),
+              ],
+            ],
+          ),
+        ),
+
+        if (onTap != null) ...[
+          const SizedBox(width: 6),
+          Container(
+            width: 30,
+            height: 30,
+            decoration: const BoxDecoration(
+              color: Color(0xFFF2F7F5),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.chevron_right_rounded,
+              size: 20,
+              color: Color(0xFF768681),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class _RoomImage extends StatelessWidget {
-  const _RoomImage({required this.url});
+  const _RoomImage({
+    required this.url,
+  });
 
   final String? url;
 
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(12),
       child: SizedBox(
-        width: 82,
-        height: 72,
+        width: 88,
+        height: 88,
         child: url == null || url!.trim().isEmpty
-            ? const ColoredBox(
-                color: Color(0xFFE8F4F1),
-                child: Icon(
-                  Icons.home_work_outlined,
-                  color: Color(0xFF79A097),
-                  size: 29,
-                ),
-              )
+            ? const _RoomImageFallback()
             : Image.network(
                 url!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const ColoredBox(
-                  color: Color(0xFFE8F4F1),
-                  child: Icon(
-                    Icons.broken_image_outlined,
-                    color: Color(0xFF79A097),
-                  ),
-                ),
+                errorBuilder: (_, __, ___) {
+                  return const _RoomImageFallback(
+                    broken: true,
+                  );
+                },
               ),
       ),
     );
   }
 }
 
+class _RoomImageFallback extends StatelessWidget {
+  const _RoomImageFallback({
+    this.broken = false,
+  });
+
+  final bool broken;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: const Color(0xFFE8F4F1),
+      child: Center(
+        child: Icon(
+          broken
+              ? Icons.broken_image_outlined
+              : Icons.home_work_outlined,
+          color: const Color(0xFF79A097),
+          size: broken ? 27 : 31,
+        ),
+      ),
+    );
+  }
+}
+
 class _InfoLine extends StatelessWidget {
-  const _InfoLine({required this.icon, required this.text, this.maxLines = 1});
+  const _InfoLine({
+    required this.icon,
+    required this.text,
+    this.maxLines = 1,
+  });
 
   final IconData icon;
   final String text;
@@ -208,8 +435,17 @@ class _InfoLine extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 15.5, color: const Color(0xFF5E716C)),
-        const SizedBox(width: 7),
+        Padding(
+          padding: const EdgeInsets.only(top: 1),
+          child: Icon(
+            icon,
+            size: 15,
+            color: const Color(0xFF657872),
+          ),
+        ),
+
+        const SizedBox(width: 6),
+
         Expanded(
           child: Text(
             text,
@@ -217,7 +453,7 @@ class _InfoLine extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: 11.5,
-              height: 1.25,
+              height: 1.22,
               color: _textSecondary,
             ),
           ),
@@ -228,7 +464,10 @@ class _InfoLine extends StatelessWidget {
 }
 
 class AppointmentStatusBadge extends StatelessWidget {
-  const AppointmentStatusBadge({required this.status, super.key});
+  const AppointmentStatusBadge({
+    required this.status,
+    super.key,
+  });
 
   final String status;
 
@@ -237,58 +476,96 @@ class AppointmentStatusBadge extends StatelessWidget {
     final config = _statusConfig(status);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 8,
+        vertical: 4,
+      ),
       decoration: BoxDecoration(
         color: config.background,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Text(
-        config.label,
-        style: TextStyle(
-          fontSize: 9,
-          fontWeight: FontWeight.w700,
-          color: config.foreground,
+        borderRadius: BorderRadius.circular(100),
+        border: Border.all(
+          color: config.foreground.withOpacity(0.10),
         ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 5,
+            height: 5,
+            decoration: BoxDecoration(
+              color: config.foreground,
+              shape: BoxShape.circle,
+            ),
+          ),
+
+          const SizedBox(width: 5),
+
+          Text(
+            config.label,
+            style: TextStyle(
+              fontSize: 9.5,
+              height: 1,
+              fontWeight: FontWeight.w700,
+              color: config.foreground,
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-typedef _StatusConfig = ({String label, Color foreground, Color background});
+typedef _StatusConfig = ({
+  String label,
+  Color foreground,
+  Color background,
+});
 
 _StatusConfig _statusConfig(String status) {
   return switch (status) {
     'PENDING' => (
-      label: 'Chờ xác nhận',
-      foreground: const Color(0xFFC97A00),
-      background: const Color(0xFFFFF1D8),
-    ),
+        label: 'Chờ xác nhận',
+        foreground: Color(0xFFC97A00),
+        background: Color(0xFFFFF3DE),
+      ),
+
     'CONFIRMED' => (
-      label: 'Đã xác nhận',
-      foreground: _greenDark,
-      background: const Color(0xFFE3F7F1),
-    ),
+        label: 'Đã xác nhận',
+        foreground: _greenDark,
+        background: Color(0xFFE6F7F2),
+      ),
+
     'COMPLETED' => (
-      label: 'Hoàn thành',
-      foreground: const Color(0xFF3478C8),
-      background: const Color(0xFFEAF3FF),
-    ),
+        label: 'Hoàn thành',
+        foreground: Color(0xFF3478C8),
+        background: Color(0xFFEDF5FF),
+      ),
+
     'CANCELLED' => (
-      label: 'Đã hủy',
-      foreground: const Color(0xFFD84B4B),
-      background: const Color(0xFFFFEAEA),
-    ),
+        label: 'Đã hủy',
+        foreground: Color(0xFFD84B4B),
+        background: Color(0xFFFFEEEE),
+      ),
+
+    'REJECTED' => (
+        label: 'Đã từ chối',
+        foreground: Color(0xFFD84B4B),
+        background: Color(0xFFFFEEEE),
+      ),
+
     _ => (
-      label: status,
-      foreground: Colors.grey,
-      background: const Color(0xFFF0F2F1),
-    ),
+        label: status,
+        foreground: Colors.grey,
+        background: Color(0xFFF0F2F1),
+      ),
   };
 }
 
 String _date(DateTime value) {
   final day = value.day.toString().padLeft(2, '0');
   final month = value.month.toString().padLeft(2, '0');
+
   return '$day/$month/${value.year}';
 }
 

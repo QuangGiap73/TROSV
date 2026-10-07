@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../appointments/domain/entities/appointment.dart';
 import '../../../appointments/presentation/providers/appointment_provider.dart';
@@ -45,6 +46,8 @@ class _LandlordAppointmentDetailScreenState
             child: AppointmentCard(
               appointment: appointment,
               landlordView: true,
+              onTap: () =>
+                  context.push('/landlord/rooms/${appointment.roomId}'),
             ),
           ),
           const SizedBox(height: 12),

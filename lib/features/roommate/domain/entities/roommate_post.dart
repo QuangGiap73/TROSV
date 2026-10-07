@@ -121,9 +121,21 @@ class RoommatePost {
   bool get isClosed => status == 'CLOSED';
 
   String? get thumbnailUrl {
-    if (mediaUrls.isEmpty) return null;
-    return mediaUrls.first;
+    if (imageUrls.isEmpty) return null;
+    return imageUrls.first;
   }
+
+  List<String> get imageUrls => mediaUrls
+      .where((url) => !_looksLikeVideoUrl(url))
+      .toList(growable: false);
+
+  List<String> get videoUrls =>
+      mediaUrls.where(_looksLikeVideoUrl).toList(growable: false);
+}
+
+bool _looksLikeVideoUrl(String value) {
+  final path = Uri.tryParse(value)?.path.toLowerCase() ?? value.toLowerCase();
+  return const ['.mp4', '.m4v', '.mov', '.webm', '.3gp'].any(path.endsWith);
 }
 
 class RoommateAuthor {

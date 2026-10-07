@@ -336,73 +336,108 @@ class _RoomMediaStepState extends State<RoomMediaStep> {
   }
 
   Future<void> _addSpace() async {
-    final titleController = TextEditingController();
-    final descriptionController = TextEditingController();
-    var privacyType = 'PRIVATE';
     final result = await showDialog<RoomSpaceDraft>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Thêm không gian'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Tên không gian',
-                  hintText: 'VD: Ban công',
-                ),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: privacyType,
-                decoration: const InputDecoration(labelText: 'Quyền sử dụng'),
-                items: const [
-                  DropdownMenuItem(value: 'PRIVATE', child: Text('Riêng tư')),
-                  DropdownMenuItem(value: 'SHARED', child: Text('Dùng chung')),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    setDialogState(() => privacyType = value);
-                  }
-                },
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: descriptionController,
-                decoration: const InputDecoration(labelText: 'Mô tả'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Hủy'),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (titleController.text.trim().isEmpty) return;
-                Navigator.pop(
-                  context,
-                  RoomSpaceDraft(
-                    type: 'OTHER',
-                    title: titleController.text.trim(),
-                    privacyType: privacyType,
-                    description: descriptionController.text.trim(),
-                  ),
-                );
-              },
-              child: const Text('Thêm'),
-            ),
-          ],
-        ),
-      ),
+      builder: (_) => const _AddSpaceDialog(),
     );
-    titleController.dispose();
-    descriptionController.dispose();
+    if (!mounted) return;
     if (result != null) setState(() => draft.addSpace(result));
   }
+}
+
+class _AddSpaceDialog extends StatefulWidget {
+  const _AddSpaceDialog();
+
+  @override
+  State<_AddSpaceDialog> createState() => _AddSpaceDialogState();
+}
+
+class _AddSpaceDialogState extends State<_AddSpaceDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _titleController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  String _privacyType = 'PRIVATE';
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    Navigator.pop(
+      context,
+      RoomSpaceDraft(
+        type: 'OTHER',
+        title: _titleController.text.trim(),
+        privacyType: _privacyType,
+        description: _descriptionController.text.trim(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    scrollable: true,
+    title: const Text('Thêm không gian'),
+    content: Form(
+      key: _formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextFormField(
+            controller: _titleController,
+            autofocus: true,
+            textInputAction: TextInputAction.next,
+            maxLength: 80,
+            validator: (value) => value?.trim().isEmpty ?? true
+                ? 'Vui lòng nhập tên không gian.'
+                : null,
+            decoration: const InputDecoration(
+              labelText: 'Tên không gian',
+              hintText: 'Ví dụ: Ban công',
+            ),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            initialValue: _privacyType,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Quyền sử dụng'),
+            items: const [
+              DropdownMenuItem(value: 'PRIVATE', child: Text('Riêng tư')),
+              DropdownMenuItem(value: 'SHARED', child: Text('Dùng chung')),
+            ],
+            onChanged: (value) {
+              if (value != null) setState(() => _privacyType = value);
+            },
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _descriptionController,
+            minLines: 2,
+            maxLines: 4,
+            maxLength: 300,
+            textInputAction: TextInputAction.done,
+            onFieldSubmitted: (_) => _submit(),
+            decoration: const InputDecoration(
+              labelText: 'Mô tả',
+              hintText: 'Mô tả ngắn về không gian',
+              alignLabelWithHint: true,
+            ),
+          ),
+        ],
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Hủy'),
+      ),
+      FilledButton(onPressed: _submit, child: const Text('Thêm')),
+    ],
+  );
 }
 
 class _VideoFileCard extends StatelessWidget {

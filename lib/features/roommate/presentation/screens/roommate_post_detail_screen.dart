@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../rooms/presentation/widgets/network_video_player.dart';
 import '../../domain/entities/roommate_post.dart';
 import '../providers/roommate_provider.dart';
 
@@ -62,7 +63,7 @@ class RoommatePostDetailScreen extends ConsumerWidget {
             indicatorWeight: 3,
             tabs: [
               Tab(text: 'Thông tin'),
-              Tab(text: 'Hình ảnh'),
+              Tab(text: 'Ảnh/Video'),
               Tab(text: 'Lối sống'),
               Tab(text: 'Chi phí'),
             ],
@@ -169,29 +170,45 @@ class _ImagesTab extends StatelessWidget {
     if (post.mediaUrls.isEmpty) {
       return const _EmptyTab(
         icon: Icons.photo_library_outlined,
-        text: 'Bài đăng chưa có hình ảnh.',
+        text: 'Bài đăng chưa có hình ảnh hoặc video.',
       );
     }
-    return GridView.builder(
+    return ListView(
       padding: const EdgeInsets.all(14),
-      itemCount: post.mediaUrls.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 8,
-        crossAxisSpacing: 8,
-        childAspectRatio: 1.05,
-      ),
-      itemBuilder: (_, index) => ClipRRect(
-        borderRadius: BorderRadius.circular(13),
-        child: Image.network(
-          post.mediaUrls[index],
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => const ColoredBox(
-            color: Color(0xFFE7EFED),
-            child: Icon(Icons.broken_image_outlined, color: _muted),
+      children: [
+        if (post.imageUrls.isNotEmpty)
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: post.imageUrls.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              childAspectRatio: 1.05,
+            ),
+            itemBuilder: (_, index) => ClipRRect(
+              borderRadius: BorderRadius.circular(13),
+              child: Image.network(
+                post.imageUrls[index],
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const ColoredBox(
+                  color: Color(0xFFE7EFED),
+                  child: Icon(Icons.broken_image_outlined, color: _muted),
+                ),
+              ),
+            ),
           ),
-        ),
-      ),
+        if (post.imageUrls.isNotEmpty && post.videoUrls.isNotEmpty)
+          const SizedBox(height: 14),
+        for (var index = 0; index < post.videoUrls.length; index++) ...[
+          NetworkVideoPlayer(
+            key: ValueKey(post.videoUrls[index]),
+            url: post.videoUrls[index],
+          ),
+          if (index < post.videoUrls.length - 1) const SizedBox(height: 12),
+        ],
+      ],
     );
   }
 }
@@ -544,40 +561,135 @@ class _DetailRow extends StatelessWidget {
     required this.value,
     this.last = false,
   });
+
   final IconData icon;
-  final String label, value;
+  final String label;
+  final String value;
   final bool last;
+
   @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        child: Row(
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final textScale = MediaQuery.textScalerOf(context).scale(12) / 12;
+
+        // Những field này thường có nội dung dài.
+        final isLongField =
+            label == 'Loại bài đăng' ||
+            label == 'Trường/Nơi làm việc' ||
+            label == 'Địa chỉ';
+
+        // Máy hẹp hoặc cỡ chữ hệ thống lớn
+        // thì field dài chuyển sang dạng label trên - value dưới.
+        final useStackedLayout =
+            isLongField && (constraints.maxWidth < 310 || textScale > 1.05);
+
+        return Column(
           children: [
-            Icon(icon, size: 18, color: _muted),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(fontSize: 12, color: _muted),
-              ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: useStackedLayout ? _buildStacked() : _buildHorizontal(),
             ),
-            Flexible(
-              child: Text(
-                value,
-                textAlign: TextAlign.right,
+
+            if (!last)
+              const Divider(height: 1, thickness: 1, color: Color(0xFFF0F3F2)),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Layout dùng cho dữ liệu ngắn:
+  ///
+  /// Số người hiện có      1 người
+  /// Ngày chuyển vào       14/10/2026
+  Widget _buildHorizontal() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(width: 20, child: Icon(icon, size: 18, color: _muted)),
+
+        const SizedBox(width: 9),
+
+        Expanded(
+          flex: 5,
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11.5, height: 1.2, color: _muted),
+          ),
+        ),
+
+        const SizedBox(width: 10),
+
+        Expanded(
+          flex: 6,
+          child: Text(
+            value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              fontSize: 11.8,
+              height: 1.25,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF17211F),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Layout dùng cho nội dung dài:
+  ///
+  /// 🎓 Trường/Nơi làm việc
+  ///    Đại học Quốc gia Hà Nội
+  Widget _buildStacked() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 20,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Icon(icon, size: 18, color: _muted),
+          ),
+        ),
+
+        const SizedBox(width: 9),
+
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
                 style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                  height: 1.2,
+                  color: _muted,
                 ),
               ),
-            ),
-          ],
+
+              const SizedBox(height: 4),
+
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 12,
+                  height: 1.35,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF17211F),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-      if (!last) const Divider(height: 1, color: Color(0xFFF0F3F2)),
-    ],
-  );
+      ],
+    );
+  }
 }
 
 class _MoneyRow extends StatelessWidget {

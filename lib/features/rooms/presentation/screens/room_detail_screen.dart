@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/currency_formatter.dart';
 import '../../domain/entities/room_detail.dart';
+import '../../domain/entities/room_trust.dart';
 import '../providers/room_providers.dart';
 import '../widgets/detail/shared_room_detail_content.dart';
 import '../widgets/report/room_report_sheet.dart';
@@ -16,6 +17,7 @@ class RoomDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final room = ref.watch(roomDetailProvider(roomId));
+    final trust = ref.watch(roomTrustProvider(roomId));
     return DefaultTabController(
       length: 4,
       child: Scaffold(
@@ -55,9 +57,14 @@ class RoomDetailScreen extends ConsumerWidget {
             onRetry: () => ref.invalidate(roomDetailProvider(roomId)),
           ),
           data: (data) => SharedRoomDetailTabView(
-            room: _tenantViewData(data),
+            room: _tenantViewData(data, trust: trust.asData?.value),
+            trustLoading: trust.isLoading,
+            trustError: trust.hasError,
+            onRetryTrust: () => ref.invalidate(roomTrustProvider(roomId)),
+            onReport: () => _openReport(context, ref, data),
             onRefresh: () async {
               ref.invalidate(roomDetailProvider(roomId));
+              ref.invalidate(roomTrustProvider(roomId));
               await ref.read(roomDetailProvider(roomId).future);
             },
           ),
@@ -153,13 +160,14 @@ class RoomDetailScreen extends ConsumerWidget {
   }
 }
 
-SharedRoomDetailData _tenantViewData(RoomDetail room) {
+SharedRoomDetailData _tenantViewData(RoomDetail room, {RoomTrust? trust}) {
   final cost = room.cost;
   return SharedRoomDetailData(
     title: room.title,
     status: room.status,
     priceMonthly: room.priceMonthly,
     estimatedMonthlyCost: room.estimatedMonthlyCost,
+    trust: trust,
     depositAmount: room.depositAmount,
     areaM2: room.areaM2,
     maxPeople: room.maxPeople,

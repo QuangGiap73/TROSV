@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../core/utils/currency_formatter.dart';
+import '../../../domain/entities/room_trust.dart';
 import '../network_video_player.dart';
 
 class SharedRoomDetailData {
@@ -10,6 +11,7 @@ class SharedRoomDetailData {
     required this.status,
     required this.priceMonthly,
     this.estimatedMonthlyCost,
+    this.trust,
     required this.depositAmount,
     required this.areaM2,
     required this.maxPeople,
@@ -31,6 +33,7 @@ class SharedRoomDetailData {
   final String title, status, address;
   final int priceMonthly, depositAmount, maxPeople, viewsCount;
   final int? estimatedMonthlyCost;
+  final RoomTrust? trust;
   final double areaM2;
   final double? latitude, longitude;
   final int? floor;
@@ -177,11 +180,17 @@ class SharedRoomDetailTabView extends StatelessWidget {
   const SharedRoomDetailTabView({
     required this.room,
     this.onRefresh,
+    this.trustLoading = false,
+    this.trustError = false,
+    this.onRetryTrust,
+    this.onReport,
     super.key,
   });
 
   final SharedRoomDetailData room;
   final Future<void> Function()? onRefresh;
+  final bool trustLoading, trustError;
+  final VoidCallback? onRetryTrust, onReport;
 
   @override
   Widget build(BuildContext context) {
@@ -293,6 +302,16 @@ class SharedRoomDetailTabView extends StatelessWidget {
                 room.houseRules!,
                 style: const TextStyle(height: 1.5),
               ),
+            ),
+          ],
+          if (room.trust != null || trustLoading || trustError) ...[
+            const SizedBox(height: 14),
+            _TrustCard(
+              trust: room.trust,
+              loading: trustLoading,
+              hasError: trustError,
+              onRetry: onRetryTrust,
+              onReport: onReport,
             ),
           ],
         ]),
@@ -583,6 +602,154 @@ class _Costs extends StatelessWidget {
               ),
             )
             .toList(),
+      ),
+    );
+  }
+}
+
+class _TrustCard extends StatelessWidget {
+  const _TrustCard({
+    required this.trust,
+    required this.loading,
+    required this.hasError,
+    this.onRetry,
+    this.onReport,
+  });
+
+  final RoomTrust? trust;
+  final bool loading, hasError;
+  final VoidCallback? onRetry, onReport;
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading && trust == null) {
+      return const _Card(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 20),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+    if (hasError && trust == null) {
+      return _Card(
+        child: Row(
+          children: [
+            const Expanded(child: Text('Không thể tải độ tin cậy của tin đăng.')),
+            TextButton(onPressed: onRetry, child: const Text('Thử lại')),
+          ],
+        ),
+      );
+    }
+
+    final value = trust!;
+    final scoreColor = value.score >= 75
+        ? const Color(0xFF00A884)
+        : value.score >= 50
+        ? const Color(0xFFF0B429)
+        : const Color(0xFFE85D4A);
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'TIN CẬY TRỌSV',
+                      style: TextStyle(
+                        color: Color(0xFFE11D2E),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: .3,
+                      ),
+                    ),
+                    SizedBox(height: 7),
+                    Text(
+                      'Kiểm tra trước khi liên hệ',
+                      style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                width: 66,
+                height: 66,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: scoreColor.withValues(alpha: .6), width: 6),
+                ),
+                child: Text(
+                  '${value.score}',
+                  style: TextStyle(
+                    color: scoreColor,
+                    fontSize: 21,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          for (final signal in value.signals) _TrustSignalRow(signal: signal),
+          if (value.advice.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(13),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F7F8),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
+                value.advice.join('\n'),
+                style: const TextStyle(height: 1.55, color: Color(0xFF374151)),
+              ),
+            ),
+          ],
+          if (onReport != null) ...[
+            const SizedBox(height: 8),
+            Center(
+              child: TextButton.icon(
+                onPressed: onReport,
+                icon: const Icon(Icons.outlined_flag_rounded, size: 19),
+                label: const Text('Báo cáo dấu hiệu bất thường'),
+                style: TextButton.styleFrom(foregroundColor: const Color(0xFFD71920)),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _TrustSignalRow extends StatelessWidget {
+  const _TrustSignalRow({required this.signal});
+  final TrustSignal signal;
+
+  @override
+  Widget build(BuildContext context) {
+    final good = signal.status.toLowerCase() == 'good';
+    final color = good ? const Color(0xFF00A884) : const Color(0xFFFF7A00);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            good ? Icons.check_circle_outline_rounded : Icons.warning_amber_rounded,
+            size: 21,
+            color: color,
+          ),
+          const SizedBox(width: 9),
+          Expanded(child: Text(signal.label, style: const TextStyle(height: 1.35))),
+        ],
       ),
     );
   }

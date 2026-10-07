@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../domain/entities/roommate_post.dart';
 import '../../domain/entities/roommate_contact.dart';
@@ -54,6 +55,11 @@ class RoommateRepositoryImpl implements RoommateRepository {
   @override
   Future<RoommatePost> createPost(CreateRoommatePostRequest request) {
     return _execute(() => _remote.createPost(request.toJson()));
+  }
+
+  @override
+  Future<String> uploadMedia(XFile file) {
+    return _execute(() => _remote.uploadMedia(file));
   }
 
   @override

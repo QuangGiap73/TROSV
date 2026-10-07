@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -36,18 +37,22 @@ class RoomMapScreen extends ConsumerStatefulWidget {
 class _RoomMapScreenState extends ConsumerState<RoomMapScreen> {
   MapLibreMapController? _mapController;
   final Map<String, RoomSummary> _roomBySymbolId = {};
+  final Map<String, Symbol> _symbolByRoomId = {};
+  final Map<String, _RoomMarkerGroup> _clusterBySymbolId = {};
   bool _styleLoaded = false;
   RoomSummary? _selectedRoom;
   LatLng? _currentLocation;
-  Circle? _userLocationCircle;
+  Symbol? _userLocationSymbol;
   bool _locating = false;
   bool _locationExplained = false;
   bool _mapStateReady = false;
   bool _awaitingInitialLocation = false;
 
   List<RoomSummary>? _pendingMarkerRooms;
+  List<RoomSummary> _latestMarkerRooms = const [];
   bool _renderingMarkers = false;
   String _renderSignature = '';
+  int _selectionRevision = 0;
   final Set<String> _registeredMarkerImages = {};
   LatLng? _focusLocation;
   String? _focusLabel;
@@ -261,7 +266,8 @@ class _RoomMapScreenState extends ConsumerState<RoomMapScreen> {
               bottom: MediaQuery.paddingOf(context).bottom + 16,
               child: _RoomMapPreview(
                 room: room,
-                onClose: () => setState(() => _selectedRoom = null),
+                distanceLabel: _distanceLabel(room),
+                onClose: _clearRoomSelection,
                 onTap: () => context.push('/rooms/${room.id}'),
               ),
             )
@@ -346,8 +352,11 @@ class _RoomMapScreenState extends ConsumerState<RoomMapScreen> {
   Future<void> _onStyleLoaded() async {
     final controller = _mapController;
     if (controller == null) return;
-    await controller.setSymbolIconAllowOverlap(false);
+    // Room markers are clustered before rendering. Allowing overlap here keeps
+    // the university marker visible even when it is close to a room cluster.
+    await controller.setSymbolIconAllowOverlap(true);
     _registeredMarkerImages.clear();
+    _userLocationSymbol = null;
     _styleLoaded = true;
     final pendingLocation = _pendingCameraLocation;
     if (pendingLocation != null) {
@@ -379,6 +388,8 @@ class _RoomMapScreenState extends ConsumerState<RoomMapScreen> {
   void _onCameraIdle() {
     final camera = _mapController?.cameraPosition;
     if (camera == null) return;
+    _renderSignature = '';
+    _scheduleMarkerRender(_latestMarkerRooms);
     ref
         .read(roomMapControllerProvider.notifier)
         .stageViewport(center: camera.target, zoom: camera.zoom);
@@ -522,21 +533,28 @@ class _RoomMapScreenState extends ConsumerState<RoomMapScreen> {
     final location = _currentLocation;
     if (controller == null || !_styleLoaded || location == null) return;
 
-    final previous = _userLocationCircle;
-    if (previous != null) await controller.removeCircle(previous);
-    _userLocationCircle = await controller.addCircle(
-      CircleOptions(
+    const imageName = 'current-location-pin-v1';
+    if (!_registeredMarkerImages.contains(imageName)) {
+      await controller.addImage(imageName, await _createUserLocationMarker());
+      _registeredMarkerImages.add(imageName);
+    }
+
+    final previous = _userLocationSymbol;
+    if (previous != null) await controller.removeSymbol(previous);
+    _userLocationSymbol = await controller.addSymbol(
+      SymbolOptions(
         geometry: location,
-        circleRadius: 10,
-        circleColor: '#2878FF',
-        circleStrokeColor: '#FFFFFF',
-        circleStrokeWidth: 4,
+        iconImage: imageName,
+        iconSize: .62,
+        iconAnchor: 'bottom',
+        zIndex: 20,
       ),
     );
   }
 
   void _scheduleMarkerRender(List<RoomSummary> rooms) {
     if (!_styleLoaded) return;
+    _latestMarkerRooms = List<RoomSummary>.unmodifiable(rooms);
     final signature = _markerSignature(rooms);
     if (signature == _renderSignature) return;
 
@@ -558,28 +576,54 @@ class _RoomMapScreenState extends ConsumerState<RoomMapScreen> {
         final rooms = _pendingMarkerRooms!;
         _pendingMarkerRooms = null;
         await controller.clearSymbols();
+        _userLocationSymbol = null;
         _roomBySymbolId.clear();
+        _symbolByRoomId.clear();
+        _clusterBySymbolId.clear();
 
         if (rooms.isNotEmpty) {
           await _ensureMarkerImages(controller, rooms);
+          final groups = _clusterRooms(
+            rooms,
+            controller.cameraPosition?.zoom ?? _pendingCameraZoom,
+          );
+          await _ensureClusterImages(controller, groups);
           final symbols = await controller.addSymbols(
-            rooms
+            groups
                 .map(
-                  (room) => SymbolOptions(
-                    geometry: LatLng(room.latitude!, room.longitude!),
-                    iconImage: _markerImageName(
-                      room.priceMonthly,
-                      selected: room.id == _selectedRoom?.id,
-                    ),
-                    iconSize: room.id == _selectedRoom?.id ? .88 : .80,
+                  (group) => SymbolOptions(
+                    geometry: group.location,
+                    iconImage: group.isCluster
+                        ? _clusterImageName(group.rooms.length)
+                        : _markerImageName(
+                            group.rooms.single.priceMonthly,
+                            selected:
+                                group.rooms.single.id == _selectedRoom?.id,
+                          ),
+                    iconSize:
+                        !group.isCluster &&
+                            group.rooms.single.id == _selectedRoom?.id
+                        ? .88
+                        : .80,
                     iconAnchor: 'bottom',
-                    zIndex: room.id == _selectedRoom?.id ? 2 : 1,
+                    zIndex:
+                        !group.isCluster &&
+                            group.rooms.single.id == _selectedRoom?.id
+                        ? 2
+                        : 1,
                   ),
                 )
                 .toList(growable: false),
           );
           for (var index = 0; index < symbols.length; index++) {
-            _roomBySymbolId[symbols[index].id] = rooms[index];
+            final group = groups[index];
+            if (group.isCluster) {
+              _clusterBySymbolId[symbols[index].id] = group;
+            } else {
+              final room = group.rooms.single;
+              _roomBySymbolId[symbols[index].id] = room;
+              _symbolByRoomId[room.id] = symbols[index];
+            }
           }
         }
 
@@ -596,14 +640,90 @@ class _RoomMapScreenState extends ConsumerState<RoomMapScreen> {
   }
 
   String _markerSignature(List<RoomSummary> rooms) {
+    final zoom = _mapController?.cameraPosition?.zoom ?? _pendingCameraZoom;
     final roomSignature = rooms
         .map(
           (room) =>
               '${room.id}:${room.latitude}:${room.longitude}:${room.priceMonthly}',
         )
         .join('|');
-    return '${_focusLocation?.latitude}:${_focusLocation?.longitude}:'
-        '${_selectedRoom?.id}|$roomSignature';
+    return '${zoom.toStringAsFixed(2)}:'
+        '${_focusLocation?.latitude}:${_focusLocation?.longitude}:'
+        '$roomSignature';
+  }
+
+  List<_RoomMarkerGroup> _clusterRooms(List<RoomSummary> rooms, double zoom) {
+    // At normal/near zoom levels, keep every price marker visible. Clustering
+    // starts only after zooming out; truly co-located rooms are always grouped
+    // so users can open their room list instead of seeing stacked markers.
+    final clusterByViewport = zoom < 13.5;
+    final clusterRadiusPixels = zoom < 11
+        ? 92.0
+        : zoom < 12.5
+        ? 74.0
+        : 56.0;
+    final groups = <_RoomMarkerGroup>[];
+    for (final room in rooms) {
+      final selected = room.id == _selectedRoom?.id;
+      final point = _projectToWorldPixels(
+        room.latitude!,
+        room.longitude!,
+        zoom,
+      );
+      _RoomMarkerGroup? nearest;
+      var nearestDistance = double.infinity;
+      if (!selected) {
+        for (final group in groups) {
+          if (group.containsSelected) continue;
+          final pixelDistance = math.sqrt(
+            math.pow(point.x - group.worldPoint.x, 2) +
+                math.pow(point.y - group.worldPoint.y, 2),
+          );
+          final center = group.location;
+          final locationDistance = _distanceBetweenMeters(
+            room.latitude!,
+            room.longitude!,
+            center.latitude,
+            center.longitude,
+          );
+          final shouldCluster =
+              locationDistance <= 15 ||
+              (clusterByViewport && pixelDistance <= clusterRadiusPixels);
+          if (shouldCluster && pixelDistance < nearestDistance) {
+            nearest = group;
+            nearestDistance = pixelDistance;
+          }
+        }
+      }
+      if (nearest == null) {
+        groups.add(
+          _RoomMarkerGroup(
+            room: room,
+            worldPoint: point,
+            containsSelected: selected,
+          ),
+        );
+      } else {
+        nearest.add(room, point);
+      }
+    }
+    return groups;
+  }
+
+  Future<void> _ensureClusterImages(
+    MapLibreMapController controller,
+    List<_RoomMarkerGroup> groups,
+  ) async {
+    for (final group in groups.where((item) => item.isCluster)) {
+      final count = group.rooms.length;
+      final name = _clusterImageName(count);
+      if (_registeredMarkerImages.contains(name)) continue;
+      await controller.addImage(
+        name,
+        await _createPriceMarkerImage(const Color(0xFF006F5F), '$count phòng'),
+      );
+      _registeredMarkerImages.add(name);
+    }
   }
 
   Future<void> _ensureMarkerImages(
@@ -612,17 +732,25 @@ class _RoomMapScreenState extends ConsumerState<RoomMapScreen> {
   ) async {
     for (final room in rooms) {
       final selected = room.id == _selectedRoom?.id;
-      final name = _markerImageName(room.priceMonthly, selected: selected);
-      if (_registeredMarkerImages.contains(name)) continue;
-      await controller.addImage(
-        name,
-        await _createPriceMarkerImage(
-          selected ? const Color(0xFF006F5F) : const Color(0xFF00A884),
-          _shortPrice(room.priceMonthly),
-        ),
-      );
-      _registeredMarkerImages.add(name);
+      await _ensureSingleMarkerImage(controller, room, selected: selected);
     }
+  }
+
+  Future<void> _ensureSingleMarkerImage(
+    MapLibreMapController controller,
+    RoomSummary room, {
+    required bool selected,
+  }) async {
+    final name = _markerImageName(room.priceMonthly, selected: selected);
+    if (_registeredMarkerImages.contains(name)) return;
+    await controller.addImage(
+      name,
+      await _createPriceMarkerImage(
+        selected ? const Color(0xFF006F5F) : const Color(0xFF00A884),
+        _shortPrice(room.priceMonthly),
+      ),
+    );
+    _registeredMarkerImages.add(name);
   }
 
   Future<void> _drawFocusMarker(MapLibreMapController controller) async {
@@ -651,22 +779,284 @@ class _RoomMapScreenState extends ConsumerState<RoomMapScreen> {
   }
 
   void _onSymbolTapped(Symbol symbol) {
+    final cluster = _clusterBySymbolId[symbol.id];
+    if (cluster != null) {
+      final currentZoom = _mapController?.cameraPosition?.zoom ?? 12;
+      if (cluster.maxDistanceMeters <= 15 || currentZoom >= 18) {
+        unawaited(_showClusterRooms(cluster));
+        return;
+      }
+      unawaited(
+        _moveCameraTo(
+          cluster.location,
+          zoom: math.min(currentZoom + 2, 19),
+          animated: true,
+        ),
+      );
+      return;
+    }
     final room = _roomBySymbolId[symbol.id];
     if (room == null || !mounted) return;
-    setState(() => _selectedRoom = room);
-    _renderSignature = '';
-    final query = ref.read(roomMapControllerProvider).query;
-    final rooms =
-        ref
-            .read(roomSearchProvider(query))
-            .asData
-            ?.value
-            .where(_hasCoordinates)
-            .take(50)
-            .toList() ??
-        const <RoomSummary>[];
-    _scheduleMarkerRender(rooms);
+    _selectRoom(room);
   }
+
+  void _selectRoom(RoomSummary room) {
+    final previous = _selectedRoom;
+    if (previous?.id == room.id) {
+      if (mounted) setState(() {});
+      return;
+    }
+    final revision = ++_selectionRevision;
+    setState(() => _selectedRoom = room);
+    unawaited(_updateSelectedSymbols(previous, room, revision));
+  }
+
+  void _clearRoomSelection() {
+    final previous = _selectedRoom;
+    if (previous == null) return;
+    final revision = ++_selectionRevision;
+    setState(() => _selectedRoom = null);
+    unawaited(_updateSelectedSymbols(previous, null, revision));
+  }
+
+  Future<void> _updateSelectedSymbols(
+    RoomSummary? previous,
+    RoomSummary? current,
+    int revision,
+  ) async {
+    final controller = _mapController;
+    if (controller == null || !_styleLoaded) return;
+    try {
+      if (current != null) {
+        await _ensureSingleMarkerImage(controller, current, selected: true);
+      }
+      if (revision != _selectionRevision || !mounted) return;
+
+      if (previous != null && previous.id != current?.id) {
+        final previousSymbol = _symbolByRoomId[previous.id];
+        if (previousSymbol != null) {
+          await controller.updateSymbol(
+            previousSymbol,
+            SymbolOptions(
+              iconImage: _markerImageName(
+                previous.priceMonthly,
+                selected: false,
+              ),
+              iconSize: .80,
+              zIndex: 1,
+            ),
+          );
+        }
+      }
+      if (revision != _selectionRevision || !mounted || current == null) return;
+      final currentSymbol = _symbolByRoomId[current.id];
+      if (currentSymbol != null) {
+        await controller.updateSymbol(
+          currentSymbol,
+          SymbolOptions(
+            iconImage: _markerImageName(current.priceMonthly, selected: true),
+            iconSize: .88,
+            zIndex: 2,
+          ),
+        );
+      }
+    } catch (_) {
+      // A camera/style refresh may replace symbols while an update is pending.
+      // The next marker render will apply the current selected state.
+    }
+  }
+
+  String? _distanceLabel(RoomSummary room) {
+    double? meters;
+    final current = _currentLocation;
+    if (current != null && room.latitude != null && room.longitude != null) {
+      meters = _distanceBetweenMeters(
+        current.latitude,
+        current.longitude,
+        room.latitude!,
+        room.longitude!,
+      );
+    } else {
+      meters = room.distanceMeters;
+      final query = ref.read(roomMapControllerProvider).query;
+      if (meters == null &&
+          query.latitude != null &&
+          query.longitude != null &&
+          room.latitude != null &&
+          room.longitude != null) {
+        meters = _distanceBetweenMeters(
+          query.latitude!,
+          query.longitude!,
+          room.latitude!,
+          room.longitude!,
+        );
+      }
+    }
+    return meters == null ? null : _formatDistance(meters);
+  }
+
+  Future<void> _showClusterRooms(_RoomMarkerGroup cluster) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => FractionallySizedBox(
+        heightFactor: .72,
+        child: Material(
+          color: const Color(0xFFF5F9F8),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              const SizedBox(height: 10),
+              Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFB8C6C2),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 8, 10),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.apartment_rounded,
+                      color: Color(0xFF008E79),
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Text(
+                        '${cluster.rooms.length} phòng tại vị trí này',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(sheetContext),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(14),
+                  itemCount: cluster.rooms.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
+                  itemBuilder: (_, index) {
+                    final room = cluster.rooms[index];
+                    return _RoomMapPreview(
+                      room: room,
+                      distanceLabel: _distanceLabel(room),
+                      onTap: () {
+                        Navigator.pop(sheetContext);
+                        context.push('/rooms/${room.id}');
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RoomMarkerGroup {
+  _RoomMarkerGroup({
+    required RoomSummary room,
+    required this.worldPoint,
+    required this.containsSelected,
+  }) : rooms = [room],
+       _latitudeTotal = room.latitude!,
+       _longitudeTotal = room.longitude!;
+
+  final List<RoomSummary> rooms;
+  final bool containsSelected;
+  math.Point<double> worldPoint;
+  double _latitudeTotal;
+  double _longitudeTotal;
+
+  bool get isCluster => rooms.length > 1;
+  double get maxDistanceMeters {
+    if (rooms.length < 2) return 0;
+    var maxDistance = 0.0;
+    for (var first = 0; first < rooms.length - 1; first++) {
+      for (var second = first + 1; second < rooms.length; second++) {
+        final distance = _distanceBetweenMeters(
+          rooms[first].latitude!,
+          rooms[first].longitude!,
+          rooms[second].latitude!,
+          rooms[second].longitude!,
+        );
+        if (distance > maxDistance) maxDistance = distance;
+      }
+    }
+    return maxDistance;
+  }
+
+  LatLng get location =>
+      LatLng(_latitudeTotal / rooms.length, _longitudeTotal / rooms.length);
+
+  void add(RoomSummary room, math.Point<double> point) {
+    final previousCount = rooms.length;
+    rooms.add(room);
+    _latitudeTotal += room.latitude!;
+    _longitudeTotal += room.longitude!;
+    worldPoint = math.Point<double>(
+      (worldPoint.x * previousCount + point.x) / rooms.length,
+      (worldPoint.y * previousCount + point.y) / rooms.length,
+    );
+  }
+}
+
+math.Point<double> _projectToWorldPixels(
+  double latitude,
+  double longitude,
+  double zoom,
+) {
+  final scale = 256.0 * math.pow(2, zoom).toDouble();
+  final x = (longitude + 180) / 360 * scale;
+  final sinLatitude = math.sin(latitude * math.pi / 180).clamp(-0.9999, 0.9999);
+  final y =
+      (0.5 - math.log((1 + sinLatitude) / (1 - sinLatitude)) / (4 * math.pi)) *
+      scale;
+  return math.Point<double>(x, y);
+}
+
+double _distanceBetweenMeters(
+  double latitudeA,
+  double longitudeA,
+  double latitudeB,
+  double longitudeB,
+) {
+  const earthRadiusMeters = 6371000.0;
+  final latitudeDelta = (latitudeB - latitudeA) * math.pi / 180;
+  final longitudeDelta = (longitudeB - longitudeA) * math.pi / 180;
+  final latitudeARadians = latitudeA * math.pi / 180;
+  final latitudeBRadians = latitudeB * math.pi / 180;
+  final haversine =
+      math.pow(math.sin(latitudeDelta / 2), 2) +
+      math.cos(latitudeARadians) *
+          math.cos(latitudeBRadians) *
+          math.pow(math.sin(longitudeDelta / 2), 2);
+  return 2 *
+      earthRadiusMeters *
+      math.asin(math.sqrt(haversine.clamp(0.0, 1.0)));
+}
+
+String _formatDistance(double meters) {
+  if (meters < 1000) return '${meters.round()} m';
+  final kilometers = meters / 1000;
+  return '${kilometers.toStringAsFixed(kilometers < 10 ? 1 : 0)} km';
 }
 
 String _shortPrice(int price) {
@@ -679,6 +1069,8 @@ String _shortPrice(int price) {
 
 String _markerImageName(int price, {required bool selected}) =>
     'room-price-v2-$price-${selected ? 'selected' : 'normal'}';
+
+String _clusterImageName(int count) => 'room-cluster-v1-$count';
 
 Future<Uint8List> _createPriceMarkerImage(Color color, String label) async {
   // Render at twice the previous size so both the price text and its touch
@@ -777,6 +1169,54 @@ Future<Uint8List> _createSchoolMarkerImage(String label) async {
     ellipsis: '…',
   )..layout(maxWidth: 488);
   title.paint(canvas, Offset(140, 72 - title.height / 2));
+  final image = await recorder.endRecording().toImage(
+    width.toInt(),
+    height.toInt(),
+  );
+  final data = await image.toByteData(format: ui.ImageByteFormat.png);
+  image.dispose();
+  return data!.buffer.asUint8List();
+}
+
+Future<Uint8List> _createUserLocationMarker() async {
+  const width = 144.0;
+  const height = 184.0;
+  final recorder = ui.PictureRecorder();
+  final canvas = Canvas(recorder);
+  final pin = Path()
+    ..moveTo(72, 178)
+    ..cubicTo(60, 155, 16, 112, 16, 70)
+    ..cubicTo(16, 34, 41, 8, 72, 8)
+    ..cubicTo(103, 8, 128, 34, 128, 70)
+    ..cubicTo(128, 112, 84, 155, 72, 178)
+    ..close();
+
+  canvas.drawShadow(pin, const Color(0x66000000), 8, false);
+  canvas.drawPath(
+    pin,
+    Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 10
+      ..strokeJoin = StrokeJoin.round,
+  );
+  canvas.drawPath(pin, Paint()..color = const Color(0xFFE53935));
+  canvas.drawCircle(const Offset(72, 68), 31, Paint()..color = Colors.white);
+
+  final icon = TextPainter(
+    text: TextSpan(
+      text: String.fromCharCode(Icons.my_location_rounded.codePoint),
+      style: TextStyle(
+        color: const Color(0xFFE53935),
+        fontSize: 39,
+        fontFamily: Icons.my_location_rounded.fontFamily,
+        package: Icons.my_location_rounded.fontPackage,
+      ),
+    ),
+    textDirection: TextDirection.ltr,
+  )..layout();
+  icon.paint(canvas, Offset(72 - icon.width / 2, 68 - icon.height / 2));
+
   final image = await recorder.endRecording().toImage(
     width.toInt(),
     height.toInt(),
@@ -1226,12 +1666,14 @@ class _LocationButton extends StatelessWidget {
 class _RoomMapPreview extends StatelessWidget {
   const _RoomMapPreview({
     required this.room,
-    required this.onClose,
     required this.onTap,
+    this.distanceLabel,
+    this.onClose,
   });
 
   final RoomSummary room;
-  final VoidCallback onClose;
+  final String? distanceLabel;
+  final VoidCallback? onClose;
   final VoidCallback onTap;
 
   @override
@@ -1277,11 +1719,20 @@ class _RoomMapPreview extends StatelessWidget {
                             ),
                           ),
                         ),
-                        IconButton(
-                          onPressed: onClose,
-                          visualDensity: VisualDensity.compact,
-                          icon: const Icon(Icons.close_rounded, size: 19),
-                        ),
+                        if (onClose != null)
+                          IconButton(
+                            onPressed: onClose,
+                            visualDensity: VisualDensity.compact,
+                            icon: const Icon(Icons.close_rounded, size: 19),
+                          )
+                        else
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 8),
+                            child: Icon(
+                              Icons.chevron_right_rounded,
+                              color: Color(0xFF008E79),
+                            ),
+                          ),
                       ],
                     ),
                     Text(
@@ -1310,7 +1761,7 @@ class _RoomMapPreview extends StatelessWidget {
                         const SizedBox(width: 3),
                         Expanded(
                           child: Text(
-                            room.fullAddress,
+                            [?distanceLabel, room.fullAddress].join(' · '),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(

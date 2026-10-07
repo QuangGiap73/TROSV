@@ -803,59 +803,132 @@ class _RoomPreviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final status = _status(room.status);
 
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: _border),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _border,
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 12,
+            offset: Offset(0, 3),
           ),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: SizedBox(
-                  width: 82,
-                  height: 78,
-                  child: room.imageUrl?.trim().isNotEmpty == true
-                      ? Image.network(
-                          room.imageUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              const _ImageFallback(),
-                        )
-                      : const _ImageFallback(),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                //
+                // ẢNH
+                //
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: SizedBox(
+                    width: 88,
+                    height: 88,
+                    child: room.imageUrl?.trim().isNotEmpty == true
+                        ? Image.network(
+                            room.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) {
+                              return const _ImageFallback();
+                            },
+                          )
+                        : const _ImageFallback(),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            room.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w900,
-                              color: _text,
-                            ),
-                          ),
+
+                const SizedBox(width: 11),
+
+                //
+                // NỘI DUNG
+                //
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      //
+                      // TITLE
+                      //
+                      Text(
+                        room.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          height: 1.18,
+                          fontWeight: FontWeight.w800,
+                          color: _text,
                         ),
-                        const SizedBox(width: 5),
-                        Container(
+                      ),
+
+                      const SizedBox(height: 4),
+
+                      //
+                      // GIÁ
+                      //
+                      Text(
+                        '${_money(room.priceMonthly)} đ/tháng',
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          height: 1.15,
+                          fontWeight: FontWeight.w900,
+                          color: _greenDark,
+                        ),
+                      ),
+
+                      //
+                      // ĐỊA CHỈ
+                      //
+                      if (room.fullAddress.trim().isNotEmpty) ...[
+                        const SizedBox(height: 5),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.location_on_outlined,
+                              size: 14,
+                              color: _muted,
+                            ),
+                            const SizedBox(width: 3),
+                            Expanded(
+                              child: Text(
+                                room.fullAddress.trim(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 10.5,
+                                  height: 1.2,
+                                  color: _muted,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+
+                      const SizedBox(height: 7),
+
+                      //
+                      // STATUS
+                      //
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 3,
+                            horizontal: 7,
+                            vertical: 4,
                           ),
                           decoration: BoxDecoration(
                             color: status.bg,
@@ -864,39 +937,30 @@ class _RoomPreviewCard extends StatelessWidget {
                           child: Text(
                             status.label,
                             style: TextStyle(
-                              fontSize: 8,
+                              fontSize: 9,
+                              height: 1,
                               fontWeight: FontWeight.w800,
                               color: status.fg,
                             ),
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      '${_money(room.priceMonthly)} đ/tháng',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                        color: _greenDark,
                       ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      room.fullAddress,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style:
-                          const TextStyle(fontSize: 9.5, color: _muted),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: Color(0xFF9BA7A3),
-              ),
-            ],
+
+                const SizedBox(width: 6),
+
+                //
+                // CHEVRON
+                //
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: Color(0xFF9BA7A3),
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -49,6 +49,15 @@ class RoomDetail {
         .whereType<String>()
         .toList();
     final property = json['property'] as Map<String, dynamic>?;
+    final costJson = json['cost'] is Map<String, dynamic>
+        ? json['cost'] as Map<String, dynamic>
+        : null;
+    final priceMonthly = _money(json['price_monthly']) ?? 0;
+    final estimatedMonthlyCost =
+        _money(json['estimated_monthly_cost']) ??
+        _money(json['estimated_cost']) ??
+        _money(costJson?['estimated_monthly_cost']) ??
+        _estimateMonthlyCost(priceMonthly, costJson);
     final address = <String?>[
       json['address_text'] as String?,
       property?['ward'] as String?,
@@ -63,8 +72,8 @@ class RoomDetail {
       areaM2: (json['area_m2'] as num?)?.toDouble() ?? 0,
       floor: (json['floor'] as num?)?.toInt(),
       maxPeople: (json['max_people'] as num?)?.toInt() ?? 0,
-      priceMonthly: (json['price_monthly'] as num?)?.toInt() ?? 0,
-      estimatedMonthlyCost: (json['estimated_monthly_cost'] as num?)?.toInt(),
+      priceMonthly: priceMonthly,
+      estimatedMonthlyCost: estimatedMonthlyCost,
       depositAmount: (json['deposit_amount'] as num?)?.toInt() ?? 0,
       status: json['status'] as String? ?? 'UNKNOWN',
       address: address,
@@ -73,9 +82,7 @@ class RoomDetail {
       imageUrls: images,
       videoUrls: videos,
       amenities: amenities,
-      cost: json['cost'] is Map<String, dynamic>
-          ? RoomCost.fromJson(json['cost'] as Map<String, dynamic>)
-          : null,
+      cost: costJson == null ? null : RoomCost.fromJson(costJson),
       availableDate: DateTime.tryParse(json['available_date'] as String? ?? ''),
       lastConfirmedAt: DateTime.tryParse(
         json['last_confirmed_at'] as String? ?? '',
@@ -111,6 +118,29 @@ class RoomDetail {
   final String? landlordName;
   final double? latitude, longitude;
   final int viewsCount;
+}
+
+int? _money(dynamic value) => switch (value) {
+  int number => number,
+  num number => number.toInt(),
+  String text => int.tryParse(text),
+  _ => null,
+};
+
+int? _estimateMonthlyCost(int priceMonthly, Map<String, dynamic>? cost) {
+  if (cost == null || priceMonthly <= 0) return null;
+  const fixedMonthlyKeys = [
+    'internet_fee',
+    'parking_fee',
+    'service_fee',
+    'cleaning_fee',
+    'other_fee',
+  ];
+  return priceMonthly +
+      fixedMonthlyKeys.fold<int>(
+        0,
+        (total, key) => total + (_money(cost[key]) ?? 0),
+      );
 }
 
 String _mediaType(Map<String, dynamic> media) {

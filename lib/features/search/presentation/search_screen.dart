@@ -1052,12 +1052,12 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
     'Nam Từ Liêm',
     'Hà Đông',
   ];
-  static const _roomTypes = <(String, String)>[
-    ('ROOM_SINGLE', 'Phòng đơn'),
-    ('ROOM_SHARED', 'Ở ghép'),
-    ('STUDIO', 'Studio'),
-    ('ONE_BEDROOM', 'Một phòng ngủ'),
-    ('WHOLE_HOUSE', 'Nguyên căn'),
+  static const _roomTypes = <(String, String, IconData)>[
+    ('ROOM_SINGLE', 'Phòng đơn', Icons.meeting_room_outlined),
+    ('ROOM_SHARED', 'Ở ghép', Icons.groups_outlined),
+    ('STUDIO', 'Studio', Icons.weekend_outlined),
+    ('ONE_BEDROOM', 'Một phòng ngủ', Icons.bed_outlined),
+    ('WHOLE_HOUSE', 'Nguyên căn', Icons.home_work_outlined),
   ];
   @override
   void initState() {
@@ -1146,13 +1146,17 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const _FilterSectionTitle('Khu vực'),
+                  const _FilterSectionTitle(
+                    'Khu vực',
+                    icon: Icons.location_on_outlined,
+                  ),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
                       _ChoiceChip(
                         label: 'Tất cả',
+                        icon: Icons.public_rounded,
                         selected: _district == null,
                         onTap: () {
                           setState(() => _district = null);
@@ -1161,6 +1165,7 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
                       ..._districts.map(
                         (district) => _ChoiceChip(
                           label: district,
+                          icon: Icons.location_on_outlined,
                           selected: _district == district,
                           onTap: () {
                             setState(() => _district = district);
@@ -1170,13 +1175,17 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
                     ],
                   ),
                   const SizedBox(height: 22),
-                  const _FilterSectionTitle('Loại phòng'),
+                  const _FilterSectionTitle(
+                    'Loại phòng',
+                    icon: Icons.home_work_outlined,
+                  ),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
                       _ChoiceChip(
                         label: 'Tất cả',
+                        icon: Icons.grid_view_rounded,
                         selected: _roomType == null,
                         onTap: () {
                           setState(() => _roomType = null);
@@ -1185,6 +1194,7 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
                       ..._roomTypes.map(
                         (option) => _ChoiceChip(
                           label: option.$2,
+                          icon: option.$3,
                           selected: _roomType == option.$1,
                           onTap: () {
                             setState(() => _roomType = option.$1);
@@ -1195,7 +1205,10 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
                   ),
                   if (widget.amenities.isNotEmpty) ...[
                     const SizedBox(height: 22),
-                    const _FilterSectionTitle('Tiện ích'),
+                    const _FilterSectionTitle(
+                      'Tiện ích',
+                      icon: Icons.weekend_rounded,
+                    ),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
@@ -1203,6 +1216,7 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
                         final selected = _amenityCodes.contains(amenity.code);
                         return _ChoiceChip(
                           label: amenity.name,
+                          icon: _amenityIcon(amenity.code, amenity.name),
                           selected: selected,
                           onTap: () {
                             setState(() {
@@ -1218,7 +1232,10 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
                     ),
                   ],
                   const SizedBox(height: 22),
-                  const _FilterSectionTitle('WC khép kín'),
+                  const _FilterSectionTitle(
+                    'WC khép kín',
+                    icon: Icons.bathtub_outlined,
+                  ),
                   _BooleanFilterRow(
                     value: _bathroomPrivate,
                     onChanged: (value) {
@@ -1228,7 +1245,10 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
                     },
                   ),
                   const SizedBox(height: 20),
-                  const _FilterSectionTitle('Ban công'),
+                  const _FilterSectionTitle(
+                    'Ban công',
+                    icon: Icons.balcony_rounded,
+                  ),
                   _BooleanFilterRow(
                     value: _hasBalcony,
                     onChanged: (value) {
@@ -1272,19 +1292,26 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
 }
 
 class _FilterSectionTitle extends StatelessWidget {
-  const _FilterSectionTitle(this.text);
+  const _FilterSectionTitle(this.text, {required this.icon});
   final String text;
+  final IconData icon;
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 9),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w900,
-          color: _text,
-        ),
+      child: Row(
+        children: [
+          Icon(icon, size: 19, color: _greenDark),
+          const SizedBox(width: 7),
+          Text(
+            text,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+              color: _text,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1295,8 +1322,10 @@ class _ChoiceChip extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
+    this.icon,
   });
   final String label;
+  final IconData? icon;
   final bool selected;
   final VoidCallback onTap;
   @override
@@ -1313,13 +1342,22 @@ class _ChoiceChip extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: selected ? _green : _border),
           ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              color: selected ? _greenDark : _text,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 16, color: selected ? _greenDark : _muted),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: selected ? _greenDark : _text,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1338,6 +1376,7 @@ class _BooleanFilterRow extends StatelessWidget {
         Expanded(
           child: _ChoiceChip(
             label: 'Tất cả',
+            icon: Icons.grid_view_rounded,
             selected: value == null,
             onTap: () => onChanged(null),
           ),
@@ -1346,6 +1385,7 @@ class _BooleanFilterRow extends StatelessWidget {
         Expanded(
           child: _ChoiceChip(
             label: 'Có',
+            icon: Icons.check_circle_outline_rounded,
             selected: value == true,
             onTap: () => onChanged(true),
           ),
@@ -1354,6 +1394,7 @@ class _BooleanFilterRow extends StatelessWidget {
         Expanded(
           child: _ChoiceChip(
             label: 'Không',
+            icon: Icons.cancel_outlined,
             selected: value == false,
             onTap: () => onChanged(false),
           ),
@@ -1361,6 +1402,47 @@ class _BooleanFilterRow extends StatelessWidget {
       ],
     );
   }
+}
+
+IconData _amenityIcon(String code, String name) {
+  final value = '$code $name'.toUpperCase();
+
+  if (value.contains('WIFI')) return Icons.wifi_rounded;
+  if (value.contains('AIR') || value.contains('ĐIỀU HÒA')) {
+    return Icons.ac_unit_rounded;
+  }
+  if (value.contains('WASH') || value.contains('MÁY GIẶT')) {
+    return Icons.local_laundry_service_rounded;
+  }
+  if (value.contains('FRIDGE') || value.contains('TỦ LẠNH')) {
+    return Icons.kitchen_rounded;
+  }
+  if (value.contains('WATER_HEATER') || value.contains('NÓNG LẠNH')) {
+    return Icons.hot_tub_rounded;
+  }
+  if (value.contains('FINGER') || value.contains('VÂN TAY')) {
+    return Icons.fingerprint_rounded;
+  }
+  if (value.contains('ELEVATOR') || value.contains('THANG MÁY')) {
+    return Icons.elevator_rounded;
+  }
+  if (value.contains('BALCONY') || value.contains('BAN CÔNG')) {
+    return Icons.balcony_rounded;
+  }
+  if (value.contains('PARK') || value.contains('ĐỂ XE')) {
+    return Icons.two_wheeler_rounded;
+  }
+  if (value.contains('CAMERA')) return Icons.photo_camera_outlined;
+  if (value.contains('WARDROBE') || value.contains('TỦ QUẦN')) {
+    return Icons.door_sliding_outlined;
+  }
+  if (value.contains('BED') || value.contains('GIƯỜNG')) {
+    return Icons.bed_rounded;
+  }
+  if (value.contains('KITCHEN') || value.contains('BẾP')) {
+    return Icons.soup_kitchen_rounded;
+  }
+  return Icons.check_circle_outline_rounded;
 }
 
 class _LoginForRecommendation extends StatelessWidget {

@@ -47,7 +47,10 @@ class _LandlordRoomsScreenState extends ConsumerState<LandlordRoomsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final rooms = ref.watch(landlordRoomsProvider(_selectedStatus));
+    // Tải một danh sách duy nhất rồi lọc trạng thái tại local. Nếu dùng status
+    // làm tham số provider, mỗi lần đổi tab sẽ tạo request mới và thay cả màn
+    // hình bằng loading, gây cảm giác trang bị làm mới.
+    final rooms = ref.watch(landlordRoomsProvider(null));
     final actionBusy = ref.watch(landlordAnyRoomActionLoadingProvider);
 
     return Scaffold(
@@ -107,6 +110,8 @@ class _LandlordRoomsScreenState extends ConsumerState<LandlordRoomsScreen> {
         ),
       ),
       body: rooms.when(
+        skipLoadingOnRefresh: true,
+        skipLoadingOnReload: true,
         loading: () => const LandlordRoomLoading(),
         error: (error, _) =>
             LandlordRoomError(message: _errorText(error), onRetry: _refresh),
@@ -186,11 +191,12 @@ class _LandlordRoomsScreenState extends ConsumerState<LandlordRoomsScreen> {
 
   List<LandlordRoom> _filterByQuery(List<LandlordRoom> rooms) {
     final q = _query.toLowerCase();
-
-    if (q.isEmpty) return rooms;
-
     return rooms
         .where((room) {
+          if (_selectedStatus != null && room.status != _selectedStatus) {
+            return false;
+          }
+          if (q.isEmpty) return true;
           return room.title.toLowerCase().contains(q) ||
               room.fullAddress.toLowerCase().contains(q);
         })
@@ -201,7 +207,7 @@ class _LandlordRoomsScreenState extends ConsumerState<LandlordRoomsScreen> {
     ref.invalidate(landlordRoomsProvider);
 
     try {
-      await ref.read(landlordRoomsProvider(_selectedStatus).future);
+      await ref.read(landlordRoomsProvider(null).future);
     } catch (_) {
       // Provider sẽ hiển thị lỗi.
     }

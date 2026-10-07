@@ -1,3 +1,5 @@
+import 'package:image_picker/image_picker.dart';
+
 import 'create_roommate_post_request.dart';
 import 'roommate_lifestyle_traits.dart';
 
@@ -27,6 +29,8 @@ class RoommateCreateDraft {
     this.guests = false,
     this.lifestyleTags = const {},
     this.mediaUrls = const [],
+    this.imageFiles = const [],
+    this.videoFiles = const [],
     this.title = '',
     this.description = '',
   });
@@ -61,6 +65,8 @@ class RoommateCreateDraft {
 
   final Set<String> lifestyleTags;
   final List<String> mediaUrls;
+  final List<XFile> imageFiles;
+  final List<XFile> videoFiles;
 
   final String title;
   final String description;
@@ -90,6 +96,8 @@ class RoommateCreateDraft {
     bool? guests,
     Set<String>? lifestyleTags,
     List<String>? mediaUrls,
+    List<XFile>? imageFiles,
+    List<XFile>? videoFiles,
     String? title,
     String? description,
   }) {
@@ -118,6 +126,8 @@ class RoommateCreateDraft {
       guests: guests ?? this.guests,
       lifestyleTags: lifestyleTags ?? this.lifestyleTags,
       mediaUrls: mediaUrls ?? this.mediaUrls,
+      imageFiles: imageFiles ?? this.imageFiles,
+      videoFiles: videoFiles ?? this.videoFiles,
       title: title ?? this.title,
       description: description ?? this.description,
     );

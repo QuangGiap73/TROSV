@@ -1,7 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
+import '../../domain/models/roommate_create_draft.dart';
 import '../providers/roommate_create_provider.dart';
 import 'widgets/roommate_create_bottom_bar.dart';
 
@@ -17,6 +22,8 @@ class _RoommateCreateStepThreeState
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _title;
   late final TextEditingController _description;
+  final _picker = ImagePicker();
+  bool _pickingMedia = false;
 
   static const _tags = [
     'Không hút thuốc',
@@ -52,6 +59,54 @@ class _RoommateCreateStepThreeState
             description: _description.text.trim(),
           ),
         );
+  }
+
+  Future<void> _pickImages() async {
+    if (_pickingMedia) return;
+    final draft = ref.read(roommateCreateDraftProvider);
+    final remaining = 6 - draft.imageFiles.length;
+    if (remaining <= 0) {
+      _message('Bạn chỉ có thể thêm tối đa 6 ảnh.');
+      return;
+    }
+    setState(() => _pickingMedia = true);
+    try {
+      final files = await _picker.pickMultiImage(
+        imageQuality: 85,
+        limit: remaining,
+      );
+      if (files.isNotEmpty) {
+        ref.read(roommateCreateDraftProvider.notifier).addImages(files);
+      }
+    } on PlatformException {
+      _message('Ứng dụng chưa được cấp quyền truy cập ảnh.');
+    } catch (_) {
+      _message('Không thể chọn ảnh. Vui lòng thử lại.');
+    } finally {
+      if (mounted) setState(() => _pickingMedia = false);
+    }
+  }
+
+  Future<void> _pickVideo() async {
+    if (_pickingMedia) return;
+    setState(() => _pickingMedia = true);
+    try {
+      final file = await _picker.pickVideo(source: ImageSource.gallery);
+      if (file != null) {
+        ref.read(roommateCreateDraftProvider.notifier).setVideo(file);
+      }
+    } on PlatformException {
+      _message('Ứng dụng chưa được cấp quyền truy cập video.');
+    } catch (_) {
+      _message('Không thể chọn video. Vui lòng thử lại.');
+    } finally {
+      if (mounted) setState(() => _pickingMedia = false);
+    }
+  }
+
+  void _message(String text) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
   Future<void> _submit() async {
@@ -166,6 +221,15 @@ class _RoommateCreateStepThreeState
                       .toList(),
                 ),
                 const SizedBox(height: 18),
+                _MediaPickerSection(
+                  draft: draft,
+                  disabled: submitting || _pickingMedia,
+                  onPickImages: _pickImages,
+                  onPickVideo: _pickVideo,
+                  onRemoveImage: (index) => controller.removeImage(index),
+                  onRemoveVideo: () => controller.setVideo(null),
+                ),
+                const SizedBox(height: 18),
                 TextFormField(
                   controller: _title,
                   maxLength: 180,
@@ -207,7 +271,7 @@ class _RoommateCreateStepThreeState
             ),
           ),
           RoommateCreateBottomBar(
-            primaryLabel: 'Đăng tin & gửi duyệt',
+            primaryLabel: 'Đăng tin',
             loading: submitting,
             onBack: () {
               _saveText();
@@ -257,4 +321,136 @@ class _RoommateCreateStepThreeState
           ),
         ),
       );
+}
+
+class _MediaPickerSection extends StatelessWidget {
+  const _MediaPickerSection({
+    required this.draft,
+    required this.disabled,
+    required this.onPickImages,
+    required this.onPickVideo,
+    required this.onRemoveImage,
+    required this.onRemoveVideo,
+  });
+
+  final RoommateCreateDraft draft;
+  final bool disabled;
+  final VoidCallback onPickImages, onPickVideo, onRemoveVideo;
+  final ValueChanged<int> onRemoveImage;
+
+  @override
+  Widget build(BuildContext context) {
+    final images = draft.imageFiles;
+    final videos = draft.videoFiles;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFD7E3E0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Hình ảnh & video',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Thêm tối đa 6 ảnh và 1 video để bài đăng dễ được quan tâm hơn.',
+            style: TextStyle(fontSize: 12, color: Color(0xFF71807C)),
+          ),
+          if (images.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: images.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                childAspectRatio: 1,
+              ),
+              itemBuilder: (_, index) => Stack(
+                fit: StackFit.expand,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.file(
+                      File(images[index].path),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  Positioned(
+                    right: 4,
+                    top: 4,
+                    child: InkWell(
+                      onTap: disabled ? null : () => onRemoveImage(index),
+                      child: const CircleAvatar(
+                        radius: 12,
+                        backgroundColor: Colors.black54,
+                        child: Icon(Icons.close, size: 15, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (videos.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FAF7),
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: ListTile(
+                leading: const Icon(
+                  Icons.play_circle_fill_rounded,
+                  color: Color(0xFF009B7D),
+                  size: 34,
+                ),
+                title: Text(
+                  videos.first.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                subtitle: const Text('Video đã chọn'),
+                trailing: IconButton(
+                  tooltip: 'Xóa video',
+                  onPressed: disabled ? null : onRemoveVideo,
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: disabled || images.length >= 6
+                      ? null
+                      : onPickImages,
+                  icon: const Icon(Icons.add_a_photo_outlined),
+                  label: Text('Thêm ảnh (${images.length}/6)'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: disabled ? null : onPickVideo,
+                  icon: const Icon(Icons.video_call_outlined),
+                  label: Text(videos.isEmpty ? 'Thêm video' : 'Đổi video'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
