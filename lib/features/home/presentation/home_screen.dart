@@ -35,84 +35,96 @@ class HomeScreen extends ConsumerWidget {
       ),
       child: Scaffold(
         backgroundColor: _homeBackground,
-        body: RefreshIndicator(
-          color: _primary,
-          edgeOffset: MediaQuery.paddingOf(context).top + 8,
-          onRefresh: () async {
-            ref.invalidate(featuredRoomsProvider);
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: RefreshIndicator(
+                color: _primary,
+                edgeOffset: MediaQuery.paddingOf(context).top + 8,
+                onRefresh: () async {
+                  ref.invalidate(featuredRoomsProvider);
 
-            if (session != null) {
-              ref.invalidate(roomMatchesProvider);
-            }
+                  if (session != null) {
+                    ref.invalidate(roomMatchesProvider);
+                  }
 
-            await ref.read(featuredRoomsProvider.future);
+                  await ref.read(featuredRoomsProvider.future);
 
-            if (session != null) {
-              try {
-                await ref.read(roomMatchesProvider.future);
-              } catch (_) {
-                // Home vẫn hiển thị danh sách phòng công khai
-                // nếu matching tạm thời không khả dụng.
-              }
-            }
-          },
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(
-              parent: BouncingScrollPhysics(),
+                  if (session != null) {
+                    try {
+                      await ref.read(roomMatchesProvider.future);
+                    } catch (_) {
+                      // Home vẫn hiển thị danh sách phòng công khai
+                      // nếu matching tạm thời không khả dụng.
+                    }
+                  }
+                },
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: HomeHeader(
+                        userName: user?.name,
+                        onLocationTap: () =>
+                            _comingSoon(context, 'Chọn khu vực'),
+                        onNotificationTap: () async {
+                          if (session == null) {
+                            ref
+                                .read(authControllerProvider.notifier)
+                                .clearError();
+
+                            final loggedIn = await context.push<bool>('/login');
+
+                            if (loggedIn != true || !context.mounted) {
+                              return;
+                            }
+                          }
+
+                          if (context.mounted) {
+                            context.push('/notifications');
+                          }
+                        },
+                        onSearchTap: () => context.go('/search'),
+                        onFindRoomTap: () => context.go('/search'),
+                        onRoommateTap: () => context.go('/roommate'),
+                        onMapTap: () => context.push('/rooms/map'),
+                        onNewRoomTap: () {
+                          final uri = Uri(
+                            path: '/search',
+                            queryParameters: const {'sort': 'NEWEST'},
+                          );
+                          context.go(uri.toString());
+                        },
+                      ),
+                    ),
+
+                    SliverToBoxAdapter(
+                      child: HomePromoSlider(
+                        onFindRoomTap: () => context.go('/search'),
+                        onRoommateTap: () => context.go('/roommate'),
+                        onNewRoomTap: () {
+                          final uri = Uri(
+                            path: '/search',
+                            queryParameters: const {'sort': 'NEWEST'},
+                          );
+                          context.go(uri.toString());
+                        },
+                      ),
+                    ),
+
+                    const _UniversityExploreSliver(),
+
+                    _HomeRoomsSliver(sessionAvailable: session != null),
+                  ],
+                ),
+              ),
             ),
-            slivers: [
-              SliverToBoxAdapter(
-                child: HomeHeader(
-                  userName: user?.name,
-                  onLocationTap: () => _comingSoon(context, 'Chọn khu vực'),
-                  onNotificationTap: () async {
-                    if (session == null) {
-                      ref.read(authControllerProvider.notifier).clearError();
-
-                      final loggedIn = await context.push<bool>('/login');
-
-                      if (loggedIn != true || !context.mounted) {
-                        return;
-                      }
-                    }
-
-                    if (context.mounted) {
-                      context.push('/notifications');
-                    }
-                  },
-                  onSearchTap: () => context.go('/search'),
-                  onFindRoomTap: () => context.go('/search'),
-                  onRoommateTap: () => context.go('/roommate'),
-                  onMapTap: () => context.push('/rooms/map'),
-                  onNewRoomTap: () {
-                    final uri = Uri(
-                      path: '/search',
-                      queryParameters: const {'sort': 'NEWEST'},
-                    );
-                    context.go(uri.toString());
-                  },
-                ),
-              ),
-
-              SliverToBoxAdapter(
-                child: HomePromoSlider(
-                  onFindRoomTap: () => context.go('/search'),
-                  onRoommateTap: () => context.go('/roommate'),
-                  onNewRoomTap: () {
-                    final uri = Uri(
-                      path: '/search',
-                      queryParameters: const {'sort': 'NEWEST'},
-                    );
-                    context.go(uri.toString());
-                  },
-                ),
-              ),
-
-              const _UniversityExploreSliver(),
-
-              _HomeRoomsSliver(sessionAvailable: session != null),
-            ],
-          ),
+            _PreferenceChatButton(
+              onTap: () => _openPreferenceChat(context, ref),
+            ),
+          ],
         ),
       ),
     );
@@ -169,6 +181,22 @@ class HomeScreen extends ConsumerWidget {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text('$feature đang được phát triển.')));
+  }
+
+  static Future<void> _openPreferenceChat(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    var session = ref.read(authControllerProvider).asData?.value;
+    if (session == null) {
+      ref.read(authControllerProvider.notifier).clearError();
+      final loggedIn = await context.push<bool>('/login');
+      if (loggedIn != true || !context.mounted) return;
+      session = ref.read(authControllerProvider).asData?.value;
+    }
+    if (session != null && context.mounted) {
+      context.push('/profile/preferences');
+    }
   }
 
   static Future<void> _toggleFavorite(
@@ -230,6 +258,128 @@ class HomeScreen extends ConsumerWidget {
         );
       }
     }
+  }
+}
+
+class _PreferenceChatButton extends StatefulWidget {
+  const _PreferenceChatButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  State<_PreferenceChatButton> createState() => _PreferenceChatButtonState();
+}
+
+class _PreferenceChatButtonState extends State<_PreferenceChatButton> {
+  static const _buttonSize = 58.0;
+  double _right = 16;
+  double _bottom = 16;
+
+  ({double right, double bottom}) _clampPosition(
+    BuildContext context, {
+    required double right,
+    required double bottom,
+  }) {
+    final media = MediaQuery.of(context);
+    final maxRight = media.size.width - _buttonSize - 8;
+    final maxBottom =
+        media.size.height -
+        media.padding.top -
+        media.padding.bottom -
+        _buttonSize -
+        82;
+    return (
+      right: right.clamp(8.0, maxRight < 8 ? 8.0 : maxRight).toDouble(),
+      bottom: bottom.clamp(8.0, maxBottom < 8 ? 8.0 : maxBottom).toDouble(),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final position = _clampPosition(context, right: _right, bottom: _bottom);
+    return Positioned(
+      right: position.right,
+      bottom: position.bottom,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onPanUpdate: (details) {
+          final next = _clampPosition(
+            context,
+            right: _right - details.delta.dx,
+            bottom: _bottom - details.delta.dy,
+          );
+          setState(() {
+            _right = next.right;
+            _bottom = next.bottom;
+          });
+        },
+        child: Semantics(
+          button: true,
+          label: 'Mở trợ lý tìm trọ. Có thể kéo để thay đổi vị trí.',
+          child: Tooltip(
+            message: 'Trợ lý tìm trọ • Giữ và kéo để di chuyển',
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: widget.onTap,
+                customBorder: const CircleBorder(),
+                child: Container(
+                  width: _buttonSize,
+                  height: _buttonSize,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF19BEA2), Color(0xFF008E78)],
+                    ),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 3),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _primary.withValues(alpha: .32),
+                        blurRadius: 18,
+                        offset: const Offset(0, 7),
+                      ),
+                    ],
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      const Icon(
+                        Icons.chat_bubble_rounded,
+                        color: Colors.white,
+                        size: 29,
+                      ),
+                      Positioned(
+                        top: 17,
+                        child: Icon(
+                          Icons.home_rounded,
+                          color: _primary,
+                          size: 13,
+                        ),
+                      ),
+                      Positioned(
+                        right: 1,
+                        top: 1,
+                        child: Container(
+                          width: 13,
+                          height: 13,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF8A34),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

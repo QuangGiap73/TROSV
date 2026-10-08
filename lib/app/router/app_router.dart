@@ -17,7 +17,7 @@ import '../../features/landlord/rooms/presentation/screens/landlord_rooms_screen
 import '../../features/landlord/rooms/presentation/screens/landlord_room_detail_screen.dart';
 import '../../features/landlord/rooms/presentation/screens/landlord_room_overview_screen.dart';
 import '../../features/notifications/presentation/screens/notifications_screen.dart';
-import '../../features/preferences/presentation/screens/preference_screen.dart';
+import '../../features/preferences/presentation/screens/preference_chat_screen.dart';
 import '../../features/profile/presentation/change_password_screen.dart';
 import '../../features/profile/presentation/edit_profile_screen.dart';
 import '../../features/profile/presentation/location_settings_screen.dart';
@@ -80,10 +80,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           StatefulShellBranch(
             routes: [
-              GoRoute(
-                path: '/map',
-                builder: (_, _) => const RoomMapScreen(),
-              ),
+              GoRoute(path: '/map', builder: (_, _) => const RoomMapScreen()),
             ],
           ),
           StatefulShellBranch(
@@ -104,10 +101,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
-      GoRoute(
-        path: '/favorites',
-        builder: (_, _) => const FavoritesScreen(),
-      ),
+      GoRoute(path: '/favorites', builder: (_, _) => const FavoritesScreen()),
       GoRoute(
         path: '/roommate/create',
         builder: (_, _) => const CreateRoommatePostScreen(),
@@ -289,7 +283,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/profile/preferences',
-        builder: (_, _) => const PreferenceScreen(),
+        builder: (_, _) => const PreferenceChatScreen(),
       ),
       GoRoute(
         path: '/profile/change-password',

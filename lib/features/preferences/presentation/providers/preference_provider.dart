@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/dio_provider.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/datasources/preference_remote_data_source.dart';
 import '../../data/datasources/university_local_data_source.dart';
 import '../../data/repositories/preference_repository_impl.dart';
@@ -39,7 +40,9 @@ class TenantPreferenceController extends AsyncNotifier<TenantPreference?> {
       ref.read(preferenceRepositoryProvider);
 
   @override
-  Future<TenantPreference?> build() {
+  Future<TenantPreference?> build() async {
+    final session = await ref.watch(authControllerProvider.future);
+    if (session == null) return null;
     return _repository.getMyPreference();
   }
 

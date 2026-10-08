@@ -62,8 +62,8 @@ class RoommatePostDetailScreen extends ConsumerWidget {
             indicatorColor: _green,
             indicatorWeight: 3,
             tabs: [
-              Tab(text: 'Thông tin'),
-              Tab(text: 'Ảnh/Video'),
+              Tab(text: 'Tổng quan'),
+              Tab(text: 'Media'),
               Tab(text: 'Lối sống'),
               Tab(text: 'Chi phí'),
             ],
@@ -235,40 +235,93 @@ class _PostOverviewCard extends StatelessWidget {
 }
 
 class _OverviewStat extends StatelessWidget {
-  const _OverviewStat({required this.icon, required this.text});
+  const _OverviewStat({
+    required this.icon,
+    required this.text,
+  });
 
   final IconData icon;
   final String text;
 
   @override
-  Widget build(BuildContext context) => Container(
-    height: 42,
-    padding: const EdgeInsets.symmetric(horizontal: 8),
-    decoration: BoxDecoration(
-      color: const Color(0xFFF9FBFA),
-      borderRadius: BorderRadius.circular(11),
-      border: Border.all(color: _border),
-    ),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, size: 16, color: _muted),
-        const SizedBox(width: 5),
-        Flexible(
-          child: Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w600,
-              color: _muted,
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final textScale =
+            MediaQuery.textScalerOf(context).scale(10.5) / 10.5;
+
+        // Mỗi ô hẹp hoặc người dùng tăng cỡ chữ
+        // thì chuyển sang icon trên - text dưới.
+        final compact =
+            constraints.maxWidth < 100 || textScale > 1.05;
+
+        return Container(
+          constraints: const BoxConstraints(
+            minHeight: 48,
+          ),
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 5 : 8,
+            vertical: 7,
+          ),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF9FBFA),
+            borderRadius: BorderRadius.circular(11),
+            border: Border.all(
+              color: _border,
             ),
           ),
-        ),
-      ],
-    ),
-  );
+          child: compact
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      icon,
+                      size: 16,
+                      color: _muted,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      text,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        height: 1.15,
+                        fontWeight: FontWeight.w600,
+                        color: _muted,
+                      ),
+                    ),
+                  ],
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      icon,
+                      size: 16,
+                      color: _muted,
+                    ),
+                    const SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        text,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                          color: _muted,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+        );
+      },
+    );
+  }
 }
 
 class _ImagesTab extends StatelessWidget {
