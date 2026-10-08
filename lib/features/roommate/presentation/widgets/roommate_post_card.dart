@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/utils/currency_formatter.dart';
@@ -6,7 +7,6 @@ import '../../domain/entities/roommate_post.dart';
 //
 // COLORS
 //
-const _green = Color(0xFF008F72);
 const _greenDark = Color(0xFF007B64);
 
 const _textPrimary = Color(0xFF17211F);
@@ -41,14 +41,12 @@ class RoommatePostCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final textScale =
-            MediaQuery.textScalerOf(context).scale(14) / 14;
+        final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
 
         //
         // Điện thoại nhỏ hoặc người dùng tăng cỡ chữ
         //
-        final isCompact =
-            constraints.maxWidth < 350 || textScale > 1.05;
+        final isCompact = constraints.maxWidth < 350 || textScale > 1.05;
 
         //
         // Ảnh cố tình cao hơn chiều rộng
@@ -61,9 +59,7 @@ class RoommatePostCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: _cardBackground,
             borderRadius: BorderRadius.circular(17),
-            border: Border.all(
-              color: _border,
-            ),
+            border: Border.all(color: _border),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x09000000),
@@ -82,8 +78,7 @@ class RoommatePostCard extends StatelessWidget {
                 padding: const EdgeInsets.all(10),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     //
                     // =====================================================
@@ -91,8 +86,7 @@ class RoommatePostCard extends StatelessWidget {
                     // =====================================================
                     //
                     Row(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         //
                         // IMAGE
@@ -126,9 +120,7 @@ class RoommatePostCard extends StatelessWidget {
                     //
                     if (showStatus) ...[
                       const SizedBox(height: 9),
-                      _PostStatus(
-                        status: post.status,
-                      ),
+                      _PostStatus(status: post.status),
                     ],
 
                     //
@@ -137,15 +129,9 @@ class RoommatePostCard extends StatelessWidget {
                     // =====================================================
                     //
                     if (post.isRejected &&
-                        post.rejectionReason
-                                ?.trim()
-                                .isNotEmpty ==
-                            true) ...[
+                        post.rejectionReason?.trim().isNotEmpty == true) ...[
                       const SizedBox(height: 8),
-                      _RejectedBox(
-                        reason:
-                            post.rejectionReason!.trim(),
-                      ),
+                      _RejectedBox(reason: post.rejectionReason!.trim()),
                     ],
                   ],
                 ),
@@ -179,28 +165,23 @@ class _PostContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         //
         // TITLE + MENU
         //
         Row(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: Text(
                 post.title,
                 maxLines: 2,
-                overflow:
-                    TextOverflow.ellipsis,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize:
-                      isCompact ? 13.4 : 14.2,
+                  fontSize: isCompact ? 13.4 : 14.2,
                   height: 1.22,
-                  fontWeight:
-                      FontWeight.w800,
+                  fontWeight: FontWeight.w800,
                   color: _textPrimary,
                 ),
               ),
@@ -209,13 +190,7 @@ class _PostContent extends StatelessWidget {
             if (trailing != null) ...[
               const SizedBox(width: 3),
 
-              SizedBox(
-                width: 30,
-                height: 30,
-                child: Center(
-                  child: trailing!,
-                ),
-              ),
+              SizedBox(width: 30, height: 30, child: Center(child: trailing!)),
             ],
           ],
         ),
@@ -228,8 +203,7 @@ class _PostContent extends StatelessWidget {
         Row(
           children: [
             const Icon(
-              Icons
-                  .account_balance_wallet_outlined,
+              Icons.account_balance_wallet_outlined,
               size: 17,
               color: _greenDark,
             ),
@@ -240,15 +214,12 @@ class _PostContent extends StatelessWidget {
               child: Text(
                 '${formatVnd(post.budgetPerPerson)} đ/người/tháng',
                 maxLines: 1,
-                overflow:
-                    TextOverflow.ellipsis,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize:
-                      isCompact ? 12.2 : 13,
+                  fontSize: isCompact ? 12.2 : 13,
                   height: 1.15,
                   color: _greenDark,
-                  fontWeight:
-                      FontWeight.w900,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ),
@@ -261,11 +232,9 @@ class _PostContent extends StatelessWidget {
         const SizedBox(height: 8),
 
         _InfoLine(
-          icon:
-              Icons.location_on_outlined,
+          icon: Icons.location_on_outlined,
           text: _buildAddress(post),
-          fontSize:
-              isCompact ? 10.4 : 10.8,
+          fontSize: isCompact ? 10.4 : 10.8,
         ),
 
         //
@@ -277,37 +246,23 @@ class _PostContent extends StatelessWidget {
           children: [
             Expanded(
               child: _InfoLine(
-                icon:
-                    Icons.group_outlined,
-                text:
-                    'Cần ${post.desiredRoommates} người',
-                fontSize: isCompact
-                    ? 10.2
-                    : 10.7,
+                icon: Icons.group_outlined,
+                text: 'Cần ${post.desiredRoommates} người',
+                fontSize: isCompact ? 10.2 : 10.7,
               ),
             ),
 
             const SizedBox(width: 6),
 
-            Container(
-              width: 1,
-              height: 17,
-              color:
-                  const Color(0xFFDDE5E2),
-            ),
+            Container(width: 1, height: 17, color: const Color(0xFFDDE5E2)),
 
             const SizedBox(width: 7),
 
             Expanded(
               child: _InfoLine(
-                icon: Icons
-                    .calendar_today_outlined,
-                text: _formatDate(
-                  post.moveInDate,
-                ),
-                fontSize: isCompact
-                    ? 9.8
-                    : 10.5,
+                icon: Icons.calendar_today_outlined,
+                text: _formatDate(post.moveInDate),
+                fontSize: isCompact ? 9.8 : 10.5,
               ),
             ),
           ],
@@ -339,21 +294,16 @@ class _PostImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasRoom =
-        type == 'HAVE_ROOM_FIND_MATE' ||
-        type == 'HAVE_ROOM';
+    final hasRoom = type == 'HAVE_ROOM_FIND_MATE' || type == 'HAVE_ROOM';
 
-    final label = hasRoom
-        ? 'Đã có phòng'
-        : 'Cùng tìm phòng';
+    final label = hasRoom ? 'Đã có phòng' : 'Cùng tìm phòng';
 
     final chipColor = hasRoom
         ? const Color(0xFF007F67)
         : const Color(0xFF177F94);
 
     return ClipRRect(
-      borderRadius:
-          BorderRadius.circular(13),
+      borderRadius: BorderRadius.circular(13),
       child: SizedBox(
         width: width,
         height: height,
@@ -363,17 +313,22 @@ class _PostImage extends StatelessWidget {
             //
             // IMAGE
             //
-            if (url?.trim().isNotEmpty ==
-                true)
-              Image.network(
-                url!,
+            if (url?.trim().isNotEmpty == true)
+              CachedNetworkImage(
+                imageUrl: url!,
                 fit: BoxFit.cover,
-                errorBuilder:
-                    (_, __, ___) {
-                  return const _ImageFallback(
-                    broken: true,
-                  );
-                },
+                fadeInDuration: const Duration(milliseconds: 160),
+                placeholder: (_, _) => const ColoredBox(
+                  color: Color(0xFFE7EFED),
+                  child: Center(
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                ),
+                errorWidget: (_, _, _) => const _ImageFallback(broken: true),
               )
             else
               const _ImageFallback(),
@@ -388,21 +343,13 @@ class _PostImage extends StatelessWidget {
               height: 44,
               child: IgnorePointer(
                 child: DecoratedBox(
-                  decoration:
-                      BoxDecoration(
-                    gradient:
-                        LinearGradient(
-                      begin: Alignment
-                          .topCenter,
-                      end: Alignment
-                          .bottomCenter,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
                       colors: [
-                        Colors
-                            .transparent,
-                        Colors.black
-                            .withOpacity(
-                          0.18,
-                        ),
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.18),
                       ],
                     ),
                   ),
@@ -419,50 +366,32 @@ class _PostImage extends StatelessWidget {
               bottom: 7,
               child: Container(
                 height: 27,
-                alignment:
-                    Alignment.center,
-                padding:
-                    const EdgeInsets
-                        .symmetric(
-                  horizontal: 7,
-                ),
-                decoration:
-                    BoxDecoration(
-                  color: Colors.white
-                      .withOpacity(0.88),
-                  borderRadius:
-                      BorderRadius.circular(
-                    9,
-                  ),
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: 7),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.88),
+                  borderRadius: BorderRadius.circular(9),
                   border: Border.all(
-                    color: Colors.white
-                        .withOpacity(
-                      0.55,
-                    ),
+                    color: Colors.white.withValues(alpha: 0.55),
                   ),
                   boxShadow: const [
                     BoxShadow(
-                      color:
-                          Color(0x18000000),
+                      color: Color(0x18000000),
                       blurRadius: 6,
-                      offset:
-                          Offset(0, 2),
+                      offset: Offset(0, 2),
                     ),
                   ],
                 ),
                 child: Text(
                   label,
                   maxLines: 1,
-                  overflow:
-                      TextOverflow.ellipsis,
-                  textAlign:
-                      TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     color: chipColor,
                     fontSize: 9,
                     height: 1,
-                    fontWeight:
-                        FontWeight.w700,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -480,11 +409,8 @@ class _PostImage extends StatelessWidget {
 // ==========================================================================
 //
 
-class _ImageFallback
-    extends StatelessWidget {
-  const _ImageFallback({
-    this.broken = false,
-  });
+class _ImageFallback extends StatelessWidget {
+  const _ImageFallback({this.broken = false});
 
   final bool broken;
 
@@ -494,13 +420,9 @@ class _ImageFallback
       color: const Color(0xFFE4F3EF),
       child: Center(
         child: Icon(
-          broken
-              ? Icons
-                  .broken_image_outlined
-              : Icons.groups_rounded,
+          broken ? Icons.broken_image_outlined : Icons.groups_rounded,
           size: broken ? 28 : 36,
-          color:
-              const Color(0xFF72A99C),
+          color: const Color(0xFF72A99C),
         ),
       ),
     );
@@ -513,8 +435,7 @@ class _ImageFallback
 // ==========================================================================
 //
 
-class _InfoLine
-    extends StatelessWidget {
+class _InfoLine extends StatelessWidget {
   const _InfoLine({
     required this.icon,
     required this.text,
@@ -529,11 +450,7 @@ class _InfoLine
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(
-          icon,
-          size: 14.5,
-          color: _textSecondary,
-        ),
+        Icon(icon, size: 14.5, color: _textSecondary),
 
         const SizedBox(width: 5),
 
@@ -541,14 +458,12 @@ class _InfoLine
           child: Text(
             text,
             maxLines: 1,
-            overflow:
-                TextOverflow.ellipsis,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: fontSize,
               height: 1.2,
               color: _textSecondary,
-              fontWeight:
-                  FontWeight.w500,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
@@ -563,42 +478,28 @@ class _InfoLine
 // ==========================================================================
 //
 
-class _PostStatus
-    extends StatelessWidget {
-  const _PostStatus({
-    required this.status,
-  });
+class _PostStatus extends StatelessWidget {
+  const _PostStatus({required this.status});
 
   final String status;
 
   @override
   Widget build(BuildContext context) {
-    final config =
-        _statusConfig(status);
+    final config = _statusConfig(status);
 
     return Container(
       width: double.infinity,
       height: 34,
-      padding:
-          const EdgeInsets.symmetric(
-        horizontal: 12,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: config.background,
-        borderRadius:
-            BorderRadius.circular(11),
+        borderRadius: BorderRadius.circular(11),
       ),
       child: Row(
-        mainAxisAlignment:
-            MainAxisAlignment.center,
-        mainAxisSize:
-            MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            config.icon,
-            size: 14,
-            color: config.foreground,
-          ),
+          Icon(config.icon, size: 14, color: config.foreground),
 
           const SizedBox(width: 6),
 
@@ -608,8 +509,7 @@ class _PostStatus
             style: TextStyle(
               fontSize: 10.5,
               height: 1,
-              fontWeight:
-                  FontWeight.w700,
+              fontWeight: FontWeight.w700,
               color: config.foreground,
             ),
           ),
@@ -626,59 +526,42 @@ typedef _StatusConfig = ({
   IconData icon,
 });
 
-_StatusConfig _statusConfig(
-  String status,
-) {
+_StatusConfig _statusConfig(String status) {
   return switch (status) {
     'ACTIVE' => (
-        label: 'Đang hiển thị',
-        foreground:
-            const Color(0xFF007D65),
-        background:
-            const Color(0xFFE6F6F1),
-        icon:
-            Icons.visibility_outlined,
-      ),
+      label: 'Đang hiển thị',
+      foreground: const Color(0xFF007D65),
+      background: const Color(0xFFE6F6F1),
+      icon: Icons.visibility_outlined,
+    ),
 
     'PENDING_REVIEW' => (
-        label: 'Chờ duyệt',
-        foreground:
-            const Color(0xFFC47A00),
-        background:
-            const Color(0xFFFFF3DE),
-        icon:
-            Icons.schedule_rounded,
-      ),
+      label: 'Chờ duyệt',
+      foreground: const Color(0xFFC47A00),
+      background: const Color(0xFFFFF3DE),
+      icon: Icons.schedule_rounded,
+    ),
 
     'REJECTED' => (
-        label: 'Bị từ chối',
-        foreground:
-            const Color(0xFFD84B4B),
-        background:
-            const Color(0xFFFFEEEE),
-        icon: Icons
-            .error_outline_rounded,
-      ),
+      label: 'Bị từ chối',
+      foreground: const Color(0xFFD84B4B),
+      background: const Color(0xFFFFEEEE),
+      icon: Icons.error_outline_rounded,
+    ),
 
     'CLOSED' => (
-        label: 'Đã đóng',
-        foreground:
-            const Color(0xFF64736F),
-        background:
-            const Color(0xFFF0F3F2),
-        icon:
-            Icons.lock_outline_rounded,
-      ),
+      label: 'Đã đóng',
+      foreground: const Color(0xFF64736F),
+      background: const Color(0xFFF0F3F2),
+      icon: Icons.lock_outline_rounded,
+    ),
 
     _ => (
-        label: status,
-        foreground:
-            const Color(0xFF64736F),
-        background:
-            const Color(0xFFF0F3F2),
-        icon:
-            Icons.info_outline_rounded,
-      ),
+      label: status,
+      foreground: const Color(0xFF64736F),
+      background: const Color(0xFFF0F3F2),
+      icon: Icons.info_outline_rounded,
+    ),
   };
 }
 
@@ -688,11 +571,8 @@ _StatusConfig _statusConfig(
 // ==========================================================================
 //
 
-class _RejectedBox
-    extends StatelessWidget {
-  const _RejectedBox({
-    required this.reason,
-  });
+class _RejectedBox extends StatelessWidget {
+  const _RejectedBox({required this.reason});
 
   final String reason;
 
@@ -700,34 +580,21 @@ class _RejectedBox
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding:
-          const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 8,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color:
-            const Color(0xFFFFF3F3),
-        borderRadius:
-            BorderRadius.circular(10),
-        border: Border.all(
-          color:
-              const Color(0xFFFFD7D7),
-        ),
+        color: const Color(0xFFFFF3F3),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFFFD7D7)),
       ),
       child: Row(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Padding(
-            padding:
-                EdgeInsets.only(top: 1),
+            padding: EdgeInsets.only(top: 1),
             child: Icon(
-              Icons
-                  .info_outline_rounded,
+              Icons.info_outline_rounded,
               size: 15,
-              color:
-                  Color(0xFFE5484D),
+              color: Color(0xFFE5484D),
             ),
           ),
 
@@ -737,14 +604,11 @@ class _RejectedBox
             child: Text(
               'Lý do: $reason',
               maxLines: 2,
-              overflow:
-                  TextOverflow.ellipsis,
-              style:
-                  const TextStyle(
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
                 fontSize: 10.5,
                 height: 1.3,
-                color:
-                    Color(0xFFD84449),
+                color: Color(0xFFD84449),
               ),
             ),
           ),
@@ -760,19 +624,14 @@ class _RejectedBox
 // ==========================================================================
 //
 
-String _buildAddress(
-  RoommatePost post,
-) {
+String _buildAddress(RoommatePost post) {
   final parts = <String>[];
 
-  final ward =
-      post.ward?.trim();
+  final ward = post.ward?.trim();
 
-  final district =
-      post.district.trim();
+  final district = post.district.trim();
 
-  final province =
-      post.province.trim();
+  final province = post.province.trim();
 
   if (ward?.isNotEmpty == true) {
     parts.add(ward!);
@@ -789,16 +648,10 @@ String _buildAddress(
   return parts.join(', ');
 }
 
-String _formatDate(
-  DateTime date,
-) {
-  final day = date.day
-      .toString()
-      .padLeft(2, '0');
+String _formatDate(DateTime date) {
+  final day = date.day.toString().padLeft(2, '0');
 
-  final month = date.month
-      .toString()
-      .padLeft(2, '0');
+  final month = date.month.toString().padLeft(2, '0');
 
   return '$day/$month/${date.year}';
 }

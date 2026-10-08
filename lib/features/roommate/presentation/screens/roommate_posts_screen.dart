@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/roommate_provider.dart';
 import '../widgets/roommate_post_card.dart';
 
@@ -43,8 +44,12 @@ class _RoommatePostsScreenState extends ConsumerState<RoommatePostsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final posts = ref.watch(roommatePostsProvider);
     final filter = ref.watch(roommateFilterProvider);
+    final userId = ref.watch(
+      authControllerProvider.select((state) => state.asData?.value?.user.id),
+    );
+    final cacheKey = (filter: filter, userId: userId);
+    final posts = ref.watch(roommatePostsProvider(cacheKey));
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark.copyWith(
@@ -90,7 +95,7 @@ class _RoommatePostsScreenState extends ConsumerState<RoommatePostsScreen> {
                   child: _ErrorState(
                     message: error.toString(),
                     onRetry: () {
-                      ref.invalidate(roommatePostsProvider);
+                      ref.invalidate(roommatePostsProvider(cacheKey));
                     },
                   ),
                 ),
@@ -203,10 +208,13 @@ class _RoommatePostsScreenState extends ConsumerState<RoommatePostsScreen> {
   }
 
   Future<void> _refresh() async {
-    ref.invalidate(roommatePostsProvider);
+    final filter = ref.read(roommateFilterProvider);
+    final userId = ref.read(authControllerProvider).asData?.value?.user.id;
+    final provider = roommatePostsProvider((filter: filter, userId: userId));
+    ref.invalidate(provider);
 
     try {
-      await ref.read(roommatePostsProvider.future);
+      await ref.read(provider.future);
     } catch (_) {
       // AsyncValue phía trên sẽ tự hiển thị lỗi.
     }
@@ -548,16 +556,15 @@ class _HeroHeader extends StatelessWidget {
                         else
                           const SizedBox(width: 10),
 
-                        const SizedBox(width: 1),
-                        const Text(
-                          'Ở ghép',
-                          style: TextStyle(
-                            fontSize: 14.5,
-                            fontWeight: FontWeight.w900,
-                            color: _text,
-                          ),
-                        ),
-
+                        // const SizedBox(width: 1),
+                        // const Text(
+                        //   'Ở ghép',
+                        //   style: TextStyle(
+                        //     fontSize: 14.5,
+                        //     fontWeight: FontWeight.w900,
+                        //     color: _text,
+                        //   ),
+                        // ),
                         const Spacer(),
 
                         _TopIconButton(
@@ -738,38 +745,37 @@ class _HeroHeader extends StatelessWidget {
           ),
         ),
 
-        // Chips nằm sát ngay dưới banner.
-        Container(
+        ColoredBox(
           color: _background,
-          padding: const EdgeInsets.fromLTRB(14, 10, 14, 7),
-          child: Row(
-            children: [
-              Expanded(
-                child: _QuickChip(
-                  label: 'Tất cả',
-                  selected: filter.postType == null,
-                  onTap: () => onTypeChanged(null),
-                ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 7),
+            child: Container(
+              height: 43,
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEEF4F2),
+                borderRadius: BorderRadius.circular(23),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _QuickChip(
-                  label: 'Đã có phòng',
-                  selected: filter.postType == 'HAVE_ROOM',
-                  onTap: () => onTypeChanged('HAVE_ROOM'),
-                ),
+              child: Row(
+                children: [
+                  _QuickChip(
+                    label: 'Tất cả',
+                    selected: filter.postType == null,
+                    onTap: () => onTypeChanged(null),
+                  ),
+                  _QuickChip(
+                    label: 'Đã có phòng',
+                    selected: filter.postType == 'HAVE_ROOM',
+                    onTap: () => onTypeChanged('HAVE_ROOM'),
+                  ),
+                  _QuickChip(
+                    label: 'Cùng tìm phòng',
+                    selected: filter.postType == 'FIND_ROOM_TOGETHER',
+                    onTap: () => onTypeChanged('FIND_ROOM_TOGETHER'),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _QuickChip(
-                  label: 'Cùng tìm phòng',
-                  selected: filter.postType == 'FIND_ROOM_TOGETHER',
-                  onTap: () {
-                    onTypeChanged('FIND_ROOM_TOGETHER');
-                  },
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ],
@@ -819,29 +825,23 @@ class _QuickChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: selected ? _green : Colors.white,
-      borderRadius: BorderRadius.circular(22),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(22),
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          height: 37,
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: 6),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: selected ? _green : _border),
-          ),
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 10.4,
-              fontWeight: FontWeight.w800,
-              color: selected ? Colors.white : _text,
+    return Expanded(
+      child: Material(
+        color: selected ? _green : Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: onTap,
+          child: Center(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+                color: selected ? Colors.white : _text,
+              ),
             ),
           ),
         ),

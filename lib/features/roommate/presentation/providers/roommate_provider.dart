@@ -86,27 +86,35 @@ class RoommateFilterController extends Notifier<RoommateFilter> {
   }
 }
 
-final roommatePostsProvider = FutureProvider.autoDispose<List<RoommatePost>>((
-  ref,
-) {
-  final filter = ref.watch(roommateFilterProvider);
-  // The response contains account-specific fields such as isOwner and
-  // contactLocked, so it must be refreshed whenever the active user changes.
-  ref.watch(
-    authControllerProvider.select((state) => state.asData?.value?.user.id),
-  );
+typedef RoommatePostsCacheKey = ({RoommateFilter filter, String? userId});
 
-  return ref
-      .watch(roommateRepositoryProvider)
-      .getPosts(
-        district: filter.district,
-        minBudget: filter.minBudget,
-        maxBudget: filter.maxBudget,
-        gender: filter.gender,
-        postType: filter.postType,
-        universityOrWork: filter.universityOrWork,
-      );
-});
+final roommatePostsProvider = FutureProvider.autoDispose
+    .family<List<RoommatePost>, RoommatePostsCacheKey>((ref, key) {
+      // Giữ kết quả của từng bộ lọc trong 5 phút sau khi rời tab. userId nằm
+      // trong cache key để dữ liệu của hai tài khoản không bao giờ dùng chung.
+      final keepAlive = ref.keepAlive();
+      Timer? disposeTimer;
+      ref.onCancel(() {
+        disposeTimer = Timer(const Duration(minutes: 5), keepAlive.close);
+      });
+      ref.onResume(() {
+        disposeTimer?.cancel();
+        disposeTimer = null;
+      });
+      ref.onDispose(() => disposeTimer?.cancel());
+
+      final filter = key.filter;
+      return ref
+          .watch(roommateRepositoryProvider)
+          .getPosts(
+            district: filter.district,
+            minBudget: filter.minBudget,
+            maxBudget: filter.maxBudget,
+            gender: filter.gender,
+            postType: filter.postType,
+            universityOrWork: filter.universityOrWork,
+          );
+    });
 
 final myRoommatePostsProvider = FutureProvider.autoDispose<List<RoommatePost>>((
   ref,
@@ -165,7 +173,9 @@ final roommateContactProvider = FutureProvider.autoDispose
         authControllerProvider.select((state) => state.asData?.value?.user.id),
       );
       if (userId == null) {
-        throw StateError('Báº¡n cáº§n Ä‘Äƒng nháº­p Ä‘á»ƒ xem thÃ´ng tin liÃªn há»‡.');
+        throw StateError(
+          'Báº¡n cáº§n Ä‘Äƒng nháº­p Ä‘á»ƒ xem thÃ´ng tin liÃªn há»‡.',
+        );
       }
       return ref.watch(roommateRepositoryProvider).getContact(postId);
     });

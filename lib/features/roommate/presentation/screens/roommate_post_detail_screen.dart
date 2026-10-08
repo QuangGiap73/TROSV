@@ -103,45 +103,7 @@ class _InformationTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 28),
       children: [
-        _HeroImage(post: post),
-        const SizedBox(height: 12),
-        _TypeBadge(type: post.postType),
-        const SizedBox(height: 8),
-        Text(
-          post.title,
-          style: const TextStyle(
-            fontSize: 20,
-            height: 1.2,
-            fontWeight: FontWeight.w900,
-            color: _ink,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          '${formatVnd(post.budgetPerPerson)}/người/tháng',
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
-            color: _greenDark,
-          ),
-        ),
-        const SizedBox(height: 8),
-        _InlineInfo(icon: Icons.location_on_outlined, text: _address(post)),
-        const SizedBox(height: 5),
-        Row(
-          children: [
-            Expanded(
-              child: _InlineInfo(
-                icon: Icons.people_outline,
-                text: 'Cần ${post.desiredRoommates} người',
-              ),
-            ),
-            _InlineInfo(
-              icon: Icons.visibility_outlined,
-              text: '${post.viewsCount} lượt xem',
-            ),
-          ],
-        ),
+        _PostOverviewCard(post: post),
         const SizedBox(height: 14),
         _AuthorCard(post: post),
         if (post.compatibilityScore != null) ...[
@@ -159,6 +121,154 @@ class _InformationTab extends StatelessWidget {
       ],
     );
   }
+}
+
+class _PostOverviewCard extends StatelessWidget {
+  const _PostOverviewCard({required this.post});
+
+  final RoommatePost post;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: _border),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x0A17211F),
+          blurRadius: 14,
+          offset: Offset(0, 5),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(5),
+          child: _HeroImage(post: post),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _TypeBadge(type: post.postType),
+              const SizedBox(height: 9),
+              Text(
+                post.title,
+                style: const TextStyle(
+                  fontSize: 21,
+                  height: 1.22,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -.25,
+                  color: _ink,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                '${formatVnd(post.budgetPerPerson)}/người/tháng',
+                style: const TextStyle(
+                  fontSize: 20,
+                  height: 1.2,
+                  fontWeight: FontWeight.w900,
+                  color: _greenDark,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(top: 1),
+                    child: Icon(
+                      Icons.location_on_outlined,
+                      size: 17,
+                      color: _muted,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      _address(post),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        height: 1.4,
+                        color: _muted,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 13),
+              Row(
+                children: [
+                  Expanded(
+                    child: _OverviewStat(
+                      icon: Icons.people_outline_rounded,
+                      text: 'Cần ${post.desiredRoommates} người',
+                    ),
+                  ),
+                  const SizedBox(width: 7),
+                  Expanded(
+                    child: _OverviewStat(
+                      icon: Icons.calendar_today_outlined,
+                      text: _date(post.moveInDate),
+                    ),
+                  ),
+                  const SizedBox(width: 7),
+                  Expanded(
+                    child: _OverviewStat(
+                      icon: Icons.visibility_outlined,
+                      text: '${post.viewsCount} lượt xem',
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _OverviewStat extends StatelessWidget {
+  const _OverviewStat({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 42,
+    padding: const EdgeInsets.symmetric(horizontal: 8),
+    decoration: BoxDecoration(
+      color: const Color(0xFFF9FBFA),
+      borderRadius: BorderRadius.circular(11),
+      border: Border.all(color: _border),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, size: 16, color: _muted),
+        const SizedBox(width: 5),
+        Flexible(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+              color: _muted,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _ImagesTab extends StatelessWidget {
@@ -419,46 +529,115 @@ class _HeroImage extends StatelessWidget {
 class _AuthorCard extends StatelessWidget {
   const _AuthorCard({required this.post});
   final RoommatePost post;
+
   @override
-  Widget build(BuildContext context) => _SectionCard(
-    title: 'Thông tin người đăng',
-    child: Row(
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: _border),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        CircleAvatar(
-          radius: 23,
-          backgroundColor: const Color(0xFFE0F5EF),
-          backgroundImage: post.author.avatarUrl == null
-              ? null
-              : NetworkImage(post.author.avatarUrl!),
-          child: post.author.avatarUrl == null
-              ? Text(
-                  post.author.name.substring(0, 1).toUpperCase(),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    color: _greenDark,
-                  ),
-                )
-              : null,
+        const Row(
+          children: [
+            Icon(Icons.person_outline_rounded, size: 19, color: _greenDark),
+            SizedBox(width: 7),
+            Text(
+              'Người đăng tin',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+            ),
+          ],
         ),
-        const SizedBox(width: 11),
-        Expanded(
-          child: Column(
+        const SizedBox(height: 13),
+        Row(
+          children: [
+            CircleAvatar(
+              radius: 25,
+              backgroundColor: const Color(0xFFE0F5EF),
+              backgroundImage: post.author.avatarUrl == null
+                  ? null
+                  : NetworkImage(post.author.avatarUrl!),
+              child: post.author.avatarUrl == null
+                  ? Text(
+                      post.author.name.substring(0, 1).toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                        color: _greenDark,
+                      ),
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    post.author.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      color: _ink,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    post.universityOrWork ?? 'Thành viên cộng đồng TrọSV',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      height: 1.3,
+                      color: _muted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEAF8F4),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                post.isOwner ? 'Tin của bạn' : 'Thành viên',
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: _greenDark,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 13),
+        Container(
+          padding: const EdgeInsets.all(11),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF3F8F7),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                post.author.name,
-                style: const TextStyle(fontWeight: FontWeight.w800),
-              ),
-              Text(
-                post.universityOrWork ?? 'Thành viên TrọSV',
-                style: const TextStyle(fontSize: 11, color: _muted),
+              Icon(Icons.shield_outlined, size: 18, color: _greenDark),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Thông tin liên hệ được bảo vệ và chỉ hiển thị khi bạn chọn liên hệ.',
+                  style: TextStyle(fontSize: 11, height: 1.4, color: _muted),
+                ),
               ),
             ],
           ),
-        ),
-        OutlinedButton(
-          onPressed: () {},
-          child: const Text('Xem trang cá nhân'),
         ),
       ],
     ),
@@ -701,28 +880,6 @@ class _MoneyRow extends StatelessWidget {
     icon: Icons.payments_outlined,
     label: label,
     value: value == null ? 'Chưa cập nhật' : '${formatVnd(value!)}$suffix',
-  );
-}
-
-class _InlineInfo extends StatelessWidget {
-  const _InlineInfo({required this.icon, required this.text});
-  final IconData icon;
-  final String text;
-  @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Icon(icon, size: 15, color: _muted),
-      const SizedBox(width: 5),
-      Flexible(
-        child: Text(
-          text,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 11, color: _muted),
-        ),
-      ),
-    ],
   );
 }
 

@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/dio_provider.dart';
 import '../../../../core/network/session_expiry_provider.dart';
+import '../../../../core/notifications/push_notification_service.dart';
 import '../../../../core/storage/secure_storage_provider.dart';
 import '../../data/datasources/auth_local_data_source.dart';
 import '../../data/datasources/auth_remote_data_source.dart';
@@ -34,13 +36,17 @@ class AuthController extends AsyncNotifier<AuthSession?> {
   AuthRepository get _repository => ref.read(authRepositoryProvider);
 
   @override
-  Future<AuthSession?> build() {
+  Future<AuthSession?> build() async {
     ref.listen(sessionExpiryProvider, (previous, next) {
       if (previous != null && next > previous) {
         state = const AsyncData(null);
       }
     });
-    return _repository.restoreSession();
+    final session = await _repository.restoreSession();
+    if (session != null) {
+      unawaited(_syncPushNotifications());
+    }
+    return session;
   }
 
   Future<bool> login({required String phone, required String password}) async {
@@ -48,6 +54,7 @@ class AuthController extends AsyncNotifier<AuthSession?> {
     try {
       final session = await _repository.login(phone: phone, password: password);
       state = AsyncData(session);
+      unawaited(_syncPushNotifications());
       return true;
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
@@ -89,6 +96,7 @@ class AuthController extends AsyncNotifier<AuthSession?> {
         role: role,
       );
       state = AsyncData(session);
+      unawaited(_syncPushNotifications());
       return true;
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
@@ -185,7 +193,26 @@ class AuthController extends AsyncNotifier<AuthSession?> {
   }
 
   Future<void> logout() async {
+    final pushNotifications = ref.read(pushNotificationServiceProvider);
+    try {
+      await pushNotifications.unregisterCurrentDevice();
+    } catch (_) {
+      // Không chặn đăng xuất nếu mạng hoặc API hủy thiết bị gặp lỗi.
+    }
     await _repository.clearSession();
     state = const AsyncData(null);
+    try {
+      await pushNotifications.deleteLocalToken();
+    } catch (_) {
+      // Phiên đăng nhập vẫn phải được xóa ngay cả khi Firebase lỗi.
+    }
+  }
+
+  Future<void> _syncPushNotifications() async {
+    try {
+      await ref.read(pushNotificationServiceProvider).registerCurrentDevice();
+    } catch (_) {
+      // Đăng ký FCM không được làm thất bại đăng nhập/khôi phục phiên.
+    }
   }
 }
